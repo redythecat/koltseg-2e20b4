@@ -314,11 +314,18 @@ export function renderOverview(state, h) {
 
 // --- Import ---
 
-export function renderImportView(state, { onDecode, onConfirm, onBack, initialCode }) {
+export function renderImportView(state, { onDecode, onConfirm, onBack, onCopyPrompt, initialCode }) {
   const { db } = state;
   const wrap = el("div", {});
   wrap.append(el("div", { class: "topbar" }, el("h2", {}, "Blokk import"), el("button", { class: "ghost", onclick: onBack }, "Vissza")));
-  const ta = el("textarea", { rows: "4", placeholder: "Illeszd be ide a Claude-tól kapott import-kódot" }, initialCode || "");
+
+  const help = el("div", { class: "card" });
+  help.append(el("label", {}, "1. lépés — beolvasás Claude-dal"));
+  help.append(el("p", { class: "muted", style: "margin:0 0 8px" }, "Koppints, másold ki a beolvasó szöveget, majd a Claude appban illeszd be a blokk fotójával. A kapott választ (link vagy JSON) hozd ide."));
+  if (onCopyPrompt) help.append(el("button", { class: "primary", style: "width:100%", onclick: onCopyPrompt }, "Beolvasó szöveg másolása"));
+  wrap.append(help);
+
+  const ta = el("textarea", { rows: "4", placeholder: "2. lépés — illeszd be ide a Claude válaszát (link vagy JSON)" }, initialCode || "");
   wrap.append(el("div", { class: "card" }, ta, el("button", { class: "primary", style: "margin-top:8px;width:100%", onclick: () => onDecode(ta.value) }, "Beolvasás")));
 
   if (state.importPreview) {

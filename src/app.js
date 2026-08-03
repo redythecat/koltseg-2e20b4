@@ -21,6 +21,15 @@ function currentMonthKey() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
+const IMPORT_PROMPT = `Ez egy blokk fotója a "Költség" nevű költségkövető appomhoz. Olvasd ki a tételeket, és add vissza CSAK egy JSON-t (semmi más szöveg), pontosan ebben a formátumban:
+{"month":"YYYY-MM","items":[{"name":"Tejföl","qty":2,"price":780,"store":"Lidl","date":"YYYY-MM-DD","payment":"card","category":"Élelmiszer"}]}
+Szabályok:
+- price = az adott sor teljes összege forintban, egész szám (nem egységár). qty = darabszám (ha nincs, 1).
+- payment: kártya = "card", készpénz = "cash" (a blokkon általában rajta van).
+- category CSAK ezek egyike legyen: "Élelmiszer" (hétköznapi kaja: hús, zöldség, kenyér, tej, kávé, fűszer...), "Alkohol/üdítő" (alkohol és üdítők), "Tisztítószer" (takarítás és tisztálkodás: mosószer, wc-papír, tusfürdő, izzadásgátló...), "Macska" (alom, macskakaja, játék), "Luxus" (nasi, csoki, rendelt kaja, videojáték).
+- month és date a blokkról; ha a hónap nem derül ki, a mostani hónap.
+Csatolom a blokk fotóját.`;
+
 const state = {
   db: load(),
   month: currentMonthKey(),
@@ -92,9 +101,14 @@ function saveReminder(f) {
 function removeReminder(id) { deleteReminder(state.db, id); state.editing = null; commit(); }
 
 // --- Import ---
+function extractPayload(input) {
+  const s = String(input).trim();
+  const m = s.match(/[?#]import=([^&\s]+)/);
+  return m ? decodeURIComponent(m[1]) : s;
+}
 function decodeToPreview(code) {
   let payload;
-  try { payload = decodeImport(code); } catch (e) { alert(e.message); return; }
+  try { payload = decodeImport(extractPayload(code)); } catch (e) { alert(e.message); return; }
   const month = payload.month || state.month;
   const rows = payload.items.map(it => ({
     name: it.name, qty: it.qty, price: it.price, store: it.store, date: it.date || month + "-01", payment: it.payment,
@@ -136,6 +150,10 @@ const handlers = {
   onAddToCalendar: (r) => downloadText(`${r.name}.ics`, reminderToIcs(r), "text/calendar;charset=utf-8"),
   onOpenImport: (code) => { state.view = "import"; state.importCode = code || ""; state.importPreview = null; render(); },
   onOpenImportView: () => handlers.onOpenImport(""),
+  onCopyImportPrompt: async () => {
+    try { await navigator.clipboard.writeText(IMPORT_PROMPT); alert("Kimásolva! Nyisd meg a Claude appot, illeszd be, és csatold a blokk fotóját. A választ (JSON) másold vissza ide a beolvasó mezőbe."); }
+    catch { alert("Nem sikerült a másolás. Jelöld ki és másold ki kézzel a szöveget."); }
+  },
   onSetTheme: (t) => { state.db.settings.theme = t; applyTheme(t); commit(); },
   onToggleNotifications: async () => {
     if (!state.db.settings.notifications) {
@@ -202,7 +220,7 @@ function render() {
       onBack: () => { state.view = "settings"; render(); },
     }));
   } else if (state.view === "import") {
-    root.append(renderImportView(state, { initialCode: state.importCode, onDecode: decodeToPreview, onConfirm: confirmImport, onBack: () => { state.view = "settings"; render(); } }));
+    root.append(renderImportView(state, { initialCode: state.importCode, onDecode: decodeToPreview, onConfirm: confirmImport, onCopyPrompt: handlers.onCopyImportPrompt, onBack: () => { state.view = "settings"; render(); } }));
   } else if (state.view === "settings") {
     root.append(renderSettings(state, handlers));
   } else {
