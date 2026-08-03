@@ -5,6 +5,7 @@ import {
   addCategory, renameCategory, deleteCategory,
   addTransfer, updateTransfer, deleteTransfer,
   addReminder, updateReminder, deleteReminder, toggleReminderPaid, remindersDueOn, daysBetween,
+  setCategoryBudget, todayKey,
 } from "./model.js";
 import { decodeImport } from "./codec.js";
 import { downloadXlsx, expenseRows, transferRows } from "./xlsx.js";
@@ -44,6 +45,7 @@ const state = {
   importCode: "",
   importPreview: null,
   navHidden: false,
+  search: "",
 };
 
 applyTheme(state.db.settings.theme);
@@ -51,7 +53,11 @@ applyAccent(state.db.settings.accent);
 watchSystemTheme(() => state.db.settings.theme);
 const didAutoBackup = maybeAutoBackup(state.db);
 
-function commit() { save(state.db); render(); }
+function commit() {
+  try { save(state.db); }
+  catch (e) { toast(e.message || "Nem sikerült menteni (megtelt a tárhely?)."); }
+  render();
+}
 
 // --- Tétel ---
 function saveItem(f) {
@@ -136,6 +142,12 @@ const handlers = {
   onAddTransfer: (dir) => { state.editing = { type: "transfer", id: null, dir }; render(); },
   onEditTransfer: (id) => { state.editing = { type: "transfer", id }; render(); },
   onManageCategories: () => { state.view = "categories"; render(); },
+  onSearchInput: (v) => {
+    state.search = v;
+    render();
+    const si = document.getElementById("kiadas-search");
+    if (si) { si.focus(); const n = si.value.length; try { si.setSelectionRange(n, n); } catch { /* nem szöveges */ } }
+  },
   onOpenReminders: () => { state.view = "reminders"; render(); },
   onAddReminder: () => { state.editing = { type: "reminder", id: null }; render(); },
   onEditReminder: (id) => { state.editing = { type: "reminder", id }; render(); },
@@ -230,7 +242,7 @@ function render() {
   } else if (state.view === "categories") {
     root.append(renderCategoryManager(state, {
       onAdd: (n) => { addCategory(state.db, n); commit(); },
-      onRename: (id, n) => { if (n) { renameCategory(state.db, id, n); commit(); } },
+      onSave: (id, n, budget) => { if (n) renameCategory(state.db, id, n); setCategoryBudget(state.db, id, budget); commit(); },
       onDelete: onDeleteCategory,
       onBack: () => { state.view = "settings"; render(); },
     }));
@@ -264,7 +276,7 @@ function render() {
 (function notifyDueToday() {
   if (!state.db.settings.notifications) return;
   if (!("Notification" in window) || Notification.permission !== "granted") return;
-  const due = remindersDueOn(state.db, new Date().toISOString().slice(0, 10));
+  const due = remindersDueOn(state.db, todayKey());
   for (const r of due) new Notification("Ma esedékes", { body: r.name + (r.amount != null && r.amount !== "" ? ` – ${r.amount} Ft` : ""), tag: "koltseg-" + r.id });
 })();
 

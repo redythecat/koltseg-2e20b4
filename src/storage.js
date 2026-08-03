@@ -1,4 +1,4 @@
-import { createDatabase, daysBetween } from "./model.js";
+import { createDatabase, daysBetween, todayKey } from "./model.js";
 
 export const KEY = "koltseg-db-v1";
 export const BACKUPS_KEY = "koltseg-backups-v1";
@@ -22,7 +22,19 @@ export function load() {
 }
 
 export function save(db) {
-  localStorage.setItem(KEY, JSON.stringify(db));
+  const json = JSON.stringify(db);
+  try {
+    localStorage.setItem(KEY, json);
+  } catch (e) {
+    // Megtelt a tárhely — próbáljuk felszabadítani a legrégebbi auto-mentés eldobásával.
+    const list = listBackups();
+    while (list.length) {
+      list.pop();
+      localStorage.setItem(BACKUPS_KEY, JSON.stringify(list));
+      try { localStorage.setItem(KEY, json); return; } catch { /* még mindig tele */ }
+    }
+    throw new Error("Megtelt a telón a tárhely. Ments ki egy biztonsági mentést, és törölj régi tételeket.");
+  }
 }
 
 export function downloadBackup(db) {
@@ -48,7 +60,8 @@ export function listBackups() {
 }
 
 export function addSnapshot(db) {
-  const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
+  const now = new Date();
+  const stamp = `${todayKey()} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   const list = listBackups();
   list.unshift({ date: stamp, data: JSON.parse(JSON.stringify(db)) });
   localStorage.setItem(BACKUPS_KEY, JSON.stringify(list.slice(0, MAX_SNAPSHOTS)));
@@ -60,7 +73,7 @@ export function maybeAutoBackup(db) {
   const hasData = (db.reminders && db.reminders.length) ||
     Object.values(db.months || {}).some(m => (m.items && m.items.length) || (m.transfers && m.transfers.length));
   if (!hasData) return false;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayKey();
   const last = localStorage.getItem(AUTO_KEY);
   if (last && daysBetween(last, today) < 7) return false;
   addSnapshot(db);

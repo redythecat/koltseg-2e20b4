@@ -1,6 +1,14 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "1.8", date: "2026-08-03", notes: [
+      "Havi keret kategóriánként: a Kiadásoknál sáv mutatja, hol tartasz, és pirosra vált túllépéskor.",
+      "Áttekintőn: az előző hónaphoz képesti változás és hó végi becslés.",
+      "Keresés a Kiadásoknál név vagy üzlet szerint.",
+      "Megbízhatóság: helyi dátum (éjfél körül is pontos) és tárhely-megtelt kezelése.",
+    ],
+  },
+  {
     v: "1.7", date: "2026-08-03", notes: [
       "A blokk-beolvasó szöveg mostantól a te saját kategóriáidhoz igazodik.",
       "Egyértelműbb gombnevek: „Biztonsági mentés fájlba” (visszaállításhoz) és külön az Excel táblázat.",

@@ -5,7 +5,7 @@ import {
   addItem, updateItem, moveItem, deleteItem,
   addCategory, renameCategory, deleteCategory,
   addTransfer, updateTransfer, deleteTransfer,
-  categoryTotal, monthOverview,
+  categoryTotal, monthOverview, monthComparison, setCategoryBudget,
 } from "../src/model.js";
 
 test("createDatabase seeds default categories, reminders, settings and empty maps", () => {
@@ -167,6 +167,36 @@ test("monthOverview computes income, expense, balance, splits", () => {
   const b0 = o.byCategory.find(x => x.categoryId === c0);
   assert.equal(b0.sum, 300);
   assert.ok(Math.abs(b0.share - 0.3) < 1e-9);
+});
+
+test("monthComparison computes delta, percent and projection for current month", () => {
+  const db = createDatabase();
+  const c = db.categories[0].id;
+  addItem(db, "2026-07", { name: "x", qty: 1, price: 1000, store: "", date: "2026-07-10", payment: "card", categoryId: c });
+  addItem(db, "2026-08", { name: "y", qty: 1, price: 500, store: "", date: "2026-08-05", payment: "card", categoryId: c });
+  const cmp = monthComparison(db, "2026-08", "2026-08-10");
+  assert.equal(cmp.prev, 1000);
+  assert.equal(cmp.current, 500);
+  assert.equal(cmp.delta, -500);
+  assert.equal(cmp.deltaPct, -50);
+  assert.equal(cmp.projection, 1550); // 500 * 31/10
+});
+
+test("monthComparison gives no projection for a non-current month", () => {
+  const db = createDatabase();
+  const cmp = monthComparison(db, "2026-08", "2026-09-01");
+  assert.equal(cmp.projection, null);
+});
+
+test("setCategoryBudget sets and clears budget", () => {
+  const db = createDatabase();
+  const id = db.categories[0].id;
+  setCategoryBudget(db, id, 80000);
+  assert.equal(db.categories[0].budget, 80000);
+  setCategoryBudget(db, id, "");
+  assert.equal(db.categories[0].budget, null);
+  setCategoryBudget(db, id, -5);
+  assert.equal(db.categories[0].budget, null);
 });
 
 test("monthOverview on empty month is all zeros", () => {

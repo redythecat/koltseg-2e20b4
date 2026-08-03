@@ -81,6 +81,12 @@ export function renameCategory(db, categoryId, name) {
   return db;
 }
 
+export function setCategoryBudget(db, categoryId, budget) {
+  const c = db.categories.find(x => x.id === categoryId);
+  if (c) c.budget = (budget === "" || budget == null || !(budget > 0)) ? null : Math.round(budget);
+  return db;
+}
+
 export function deleteCategory(db, categoryId, reassignToId) {
   for (const key of Object.keys(db.months)) {
     const m = db.months[key];
@@ -226,6 +232,30 @@ export function remindersDueOn(db, dateKey) {
 
 export function daysBetween(fromKey, toKey) {
   return Math.round((parseDay(toKey).getTime() - parseDay(fromKey).getTime()) / 86400000);
+}
+
+// Helyi (nem UTC) mai dátum YYYY-MM-DD — hogy éjfél körül ne csússzon el a nap.
+export function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// Havi összehasonlítás + hó végi becslés (csak az aktuális hónapra ad becslést).
+export function monthComparison(db, monthKey, todayK) {
+  const cur = monthOverview(db, monthKey).totalExpense;
+  const [y, m] = monthKey.split("-").map(Number);
+  const prevD = new Date(Date.UTC(y, m - 2, 1));
+  const prevKey = `${prevD.getUTCFullYear()}-${String(prevD.getUTCMonth() + 1).padStart(2, "0")}`;
+  const prev = monthOverview(db, prevKey).totalExpense;
+  const delta = cur - prev;
+  const deltaPct = prev > 0 ? Math.round((delta / prev) * 100) : null;
+  let projection = null;
+  if (todayK && todayK.slice(0, 7) === monthKey) {
+    const day = Number(todayK.slice(8, 10));
+    const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    if (day > 0) projection = Math.round(cur * (daysInMonth / day));
+  }
+  return { current: cur, prev, delta, deltaPct, projection };
 }
 
 // Az adott hónap esedékes kötelező kiadásai, kijelzéshez: a ma-hoz legközelebbi

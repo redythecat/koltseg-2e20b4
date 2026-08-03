@@ -1,4 +1,4 @@
-import { monthOverview, categoryTotal, remindersDueInMonth, occurrencesInMonth, dueSummaryForMonth } from "./model.js";
+import { monthOverview, categoryTotal, remindersDueInMonth, occurrencesInMonth, dueSummaryForMonth, todayKey, monthComparison } from "./model.js";
 import { ACCENTS } from "./theme.js";
 import { toast } from "./dialog.js";
 import { APP_VERSION, APP_DATE } from "./version.js";
@@ -70,8 +70,6 @@ export function shiftMonth(key, delta) {
   const d = new Date(Date.UTC(y, m - 1 + delta, 1));
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
-export function todayKey() { return new Date().toISOString().slice(0, 10); }
-
 export function el(tag, attrs = {}, ...kids) {
   const n = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
@@ -100,17 +98,30 @@ export function renderMonthView(state, h) {
   const pinned = renderRemindersPinned(state, h); if (pinned) wrap.append(pinned);
 
   wrap.append(renderMonthNav(state, h));
-  wrap.append(el("button", { class: "primary", onclick: h.onAddItem, style: "width:100%;margin:10px 0 12px" }, "Új tétel"));
+
+  const q = (state.search || "").trim().toLowerCase();
+  wrap.append(el("input", { id: "kiadas-search", value: state.search || "", placeholder: "Keresés (név vagy üzlet)", oninput: e => h.onSearchInput(e.target.value), style: "margin:10px 0 8px" }));
+  wrap.append(el("button", { class: "primary", onclick: h.onAddItem, style: "width:100%;margin:0 0 12px" }, "Új tétel"));
 
   const m = db.months[month] || { items: [], transfers: [] };
+  let shownAny = false;
   for (const c of db.categories.slice().sort((a, b) => a.order - b.order)) {
-    const items = m.items.filter(i => i.categoryId === c.id);
+    let items = m.items.filter(i => i.categoryId === c.id);
+    if (q) items = items.filter(it => (it.name + " " + (it.store || "")).toLowerCase().includes(q));
+    if (q && !items.length) continue;
+    shownAny = true;
     const key = "cat:" + c.id;
-    const open = !isCollapsed(state, key);
+    const open = q ? true : !isCollapsed(state, key);
+    const total = categoryTotal(db, month, c.id);
+    const over = c.budget && total > c.budget;
     const card = el("div", { class: "card" });
     card.append(el("button", { class: "collapse-head", onclick: () => h.onToggleCollapse(key) },
       el("span", { class: "left" }, chev(open), el("span", { class: "sec-title" }, c.name)),
-      el("span", { class: "sec-sum" }, ft(categoryTotal(db, month, c.id)))));
+      el("span", { class: "sec-sum", style: over ? "color:var(--neg)" : "" }, c.budget ? `${ft(total)} / ${ft(c.budget)}` : ft(total))));
+    if (c.budget) {
+      const pct = Math.min(100, Math.round((total / c.budget) * 100));
+      card.append(el("div", { class: "bar" }, el("span", { style: `width:${pct}%` + (over ? ";background:var(--neg)" : "") })));
+    }
     if (open) {
       for (const it of items) {
         card.append(el("div", { class: "item", onclick: () => h.onEditItem(it.id) },
@@ -121,6 +132,7 @@ export function renderMonthView(state, h) {
     }
     wrap.append(card);
   }
+  if (q && !shownAny) wrap.append(el("div", { class: "card muted" }, "Nincs találat."));
   const o = monthOverview(db, month);
   wrap.append(el("div", { class: "total" }, `Havi kiadás: ${ft(o.totalExpense)}`));
   return wrap;
@@ -178,16 +190,19 @@ export function renderItemForm(state, { item, onSave, onDelete, onCancel }) {
 
 // --- Kategória-kezelő ---
 
-export function renderCategoryManager(state, { onAdd, onRename, onDelete, onBack }) {
+export function renderCategoryManager(state, { onAdd, onSave, onDelete, onBack }) {
   const { db } = state;
   const wrap = el("div", {});
   wrap.append(el("div", { class: "topbar" }, el("h2", {}, "Kategóriák"), el("button", { class: "ghost", onclick: onBack }, "Kész")));
   for (const c of db.categories.slice().sort((a, b) => a.order - b.order)) {
     const card = el("div", { class: "card" });
-    const input = el("input", { value: c.name });
-    card.append(el("label", {}, "Név"), input);
+    const nameInput = el("input", { value: c.name });
+    const budgetInput = el("input", { type: "number", inputmode: "numeric", min: "0", value: c.budget ?? "", placeholder: "nincs" });
+    card.append(el("div", { class: "row" },
+      el("div", {}, el("label", {}, "Név"), nameInput),
+      el("div", {}, el("label", {}, "Havi keret (Ft)"), budgetInput)));
     const actions = el("div", { class: "row", style: "margin-top:8px" });
-    actions.append(el("button", { class: "primary", onclick: () => onRename(c.id, input.value.trim()) }, "Átnevez"));
+    actions.append(el("button", { class: "primary", onclick: () => onSave(c.id, nameInput.value.trim(), budgetInput.value === "" ? null : Number(budgetInput.value)) }, "Mentés"));
     actions.append(el("button", { class: "ghost", style: "color:var(--neg)", onclick: () => onDelete(c) }, "Törlés"));
     card.append(actions);
     wrap.append(card);
@@ -195,6 +210,7 @@ export function renderCategoryManager(state, { onAdd, onRename, onDelete, onBack
   const nc = el("input", { placeholder: "Új kategória neve" });
   wrap.append(el("div", { class: "card" }, el("label", {}, "Új kategória"), nc,
     el("button", { class: "primary", style: "margin-top:8px;width:100%", onclick: () => { if (nc.value.trim()) onAdd(nc.value.trim()); } }, "Hozzáadás")));
+  wrap.append(el("p", { class: "muted" }, "A havi keret opcionális. Ha megadod, a Kiadásoknál a kategória sávval mutatja, hol tartasz, és pirosra vált, ha átléped."));
   return wrap;
 }
 
@@ -275,6 +291,16 @@ export function renderOverview(state, h) {
   kpi.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Kiadás"), el("span", { class: "neg" }, ft(o.totalExpense))));
   kpi.append(el("div", { class: "cat-head", style: "margin-top:6px;font-weight:700" }, el("span", {}, "Egyenleg"), el("span", { class: o.balance >= 0 ? "pos" : "neg" }, ft(o.balance))));
   wrap.append(kpi);
+
+  const cmp = monthComparison(state.db, state.month, todayKey());
+  const cmpCard = el("div", { class: "card" });
+  cmpCard.append(el("h3", {}, "Összehasonlítás"));
+  cmpCard.append(el("div", { class: "cat-head" }, el("span", {}, "Előző hónap kiadása"), el("span", { class: "muted" }, ft(cmp.prev))));
+  const dColor = cmp.delta > 0 ? "var(--neg)" : (cmp.delta < 0 ? "var(--pos)" : "var(--muted)");
+  const dTxt = (cmp.delta > 0 ? "+" : "") + ft(cmp.delta) + (cmp.deltaPct !== null ? ` (${cmp.deltaPct > 0 ? "+" : ""}${cmp.deltaPct}%)` : "");
+  cmpCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Változás"), el("span", { style: `color:${dColor};font-weight:600` }, dTxt)));
+  if (cmp.projection != null) cmpCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Becsült hó vége"), el("span", { class: "muted" }, "~" + ft(cmp.projection))));
+  wrap.append(cmpCard);
 
   const cats = el("div", { class: "card" });
   cats.append(el("h3", {}, "Kiadások kategóriánként"));
