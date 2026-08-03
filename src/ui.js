@@ -1,4 +1,4 @@
-import { monthOverview, categoryTotal, remindersDueInMonth, occurrencesInMonth, dueSummaryForMonth, todayKey, monthComparison } from "./model.js";
+import { monthOverview, categoryTotal, remindersDueInMonth, occurrencesInMonth, dueSummaryForMonth, todayKey, monthComparison, monthStats, yearTotal } from "./model.js";
 import { ACCENTS } from "./theme.js";
 import { toast } from "./dialog.js";
 import { APP_VERSION, APP_DATE } from "./version.js";
@@ -105,6 +105,11 @@ export function renderMonthView(state, h) {
   wrap.append(el("div", { class: "month-total" }, el("span", { class: "mt-label" }, "Havi kiadás"), el("span", { class: "mt-amount" }, ft(monthOverview(db, month).totalExpense))));
 
   const m = db.months[month] || { items: [], transfers: [] };
+  if (!q && m.items.length === 0) {
+    wrap.append(el("div", { class: "empty-hint" },
+      el("strong", {}, "Még nincs tétel ebben a hónapban"),
+      el("div", { class: "muted" }, "Vedd fel az elsőt az „Új tétel” gombbal, vagy olvass be egy blokkot: Beállítások → Blokk import.")));
+  }
   let shownAny = false;
   for (const c of db.categories.slice().sort((a, b) => a.order - b.order)) {
     let items = m.items.filter(i => i.categoryId === c.id);
@@ -319,6 +324,16 @@ export function renderOverview(state, h) {
   pay.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Kimenő utalás"), el("span", { class: "muted" }, ft(o.expenseOut))));
   wrap.append(pay);
 
+  const stats = monthStats(state.db, state.month);
+  const year = state.month.slice(0, 4);
+  const statCard = el("div", { class: "card" });
+  statCard.append(el("h3", {}, "Statisztika"));
+  if (stats.topStore) statCard.append(el("div", { class: "cat-head" }, el("span", {}, "Legtöbbet itt költöttél"), el("span", { class: "muted" }, `${stats.topStore.name} · ${ft(stats.topStore.sum)}`)));
+  if (stats.biggestItem) statCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Legnagyobb tétel"), el("span", { class: "muted" }, `${stats.biggestItem.name} · ${ft(stats.biggestItem.price)}`)));
+  statCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, `${year} összes kiadása`), el("span", { class: "muted" }, ft(yearTotal(state.db, year)))));
+  if (!stats.topStore && !stats.biggestItem) statCard.append(el("div", { class: "muted", style: "margin-top:6px" }, "Ehhez a hónaphoz még nincs elég adat."));
+  wrap.append(statCard);
+
   const due = dueSummaryForMonth(state.db, state.month, todayKey());
   const rem = el("div", { class: "card" });
   rem.append(el("h3", {}, "Kötelező kiadások"));
@@ -477,17 +492,25 @@ export function renderSettings(state, h) {
   const { db } = state;
   const wrap = el("div", {});
   wrap.append(el("h2", {}, "Beállítások"));
+  const b = (label, fn, cls = "") => el("button", { class: cls, style: "width:100%;margin-bottom:8px", onclick: fn }, label);
 
-  const verCard = el("div", { class: "card" });
-  verCard.append(el("button", { class: "ver-box", onclick: h.onShowChangelog },
-    el("span", { class: "v" }, `Verzió ${APP_VERSION} · ${APP_DATE}`),
-    el("span", { class: "go" }, "Mi újult meg? →")));
-  wrap.append(verCard);
+  // 1) Kezelés (legfelül)
+  const linksCard = el("div", { class: "card" });
+  linksCard.append(el("label", {}, "Kezelés"),
+    b("Hogyan használd (súgó)", h.onOpenHelp, "primary"),
+    b("Kötelező kiadások / emlékeztetők", h.onOpenReminders),
+    b("Kategóriák kezelése", h.onManageCategories),
+    b("Blokk import", h.onOpenImportView));
+  wrap.append(linksCard);
 
-  wrap.append(el("div", { class: "warn-card" },
-    el("span", { class: "warn-title" }, "Fontos — mentsd az adataidat!"),
-    el("p", {}, "Az összes adatod és a telón tárolt automatikus mentések a TELEFONODON vannak. Ha törlöd a böngésző adatait, alaphelyzetbe állítod a telót, vagy az iPhone felszabadítja a helyet, MINDEN elveszhet. Ezért havonta egyszer nyomd meg lent a „Biztonsági mentés fájlba” gombot, és tedd a fájlt felhőbe vagy más biztos helyre.")));
+  // 2) Értesítések (a Kezelés alatt)
+  const notifCard = el("div", { class: "card" });
+  notifCard.append(el("div", { class: "cat-head" }, el("span", {}, "Értesítések (esedékes kötelező kiadások)"), el("span", { class: "muted" }, db.settings.notifications ? "Be" : "Ki")));
+  notifCard.append(el("button", { class: "ghost", style: "width:100%;margin-top:8px", onclick: h.onToggleNotifications }, db.settings.notifications ? "Kikapcsolás" : "Bekapcsolás"));
+  notifCard.append(el("p", { class: "muted" }, "Helyi értesítés az app nyitásakor. Zárt appnál is szóló riasztáshoz használd az emlékeztetőnél a „Naptárba” gombot."));
+  wrap.append(notifCard);
 
+  // 3) Kinézet: téma, szín, betűméret
   const themeCard = el("div", { class: "card" });
   themeCard.append(el("label", {}, "Téma"));
   themeCard.append(el("select", { onchange: e => h.onSetTheme(e.target.value) },
@@ -507,14 +530,18 @@ export function renderSettings(state, h) {
   accentCard.append(sw);
   wrap.append(accentCard);
 
-  const notifCard = el("div", { class: "card" });
-  notifCard.append(el("div", { class: "cat-head" }, el("span", {}, "Értesítések (esedékes kötelező kiadások)"), el("span", { class: "muted" }, db.settings.notifications ? "Be" : "Ki")));
-  notifCard.append(el("button", { class: "ghost", style: "width:100%;margin-top:8px", onclick: h.onToggleNotifications }, db.settings.notifications ? "Kikapcsolás" : "Bekapcsolás"));
-  notifCard.append(el("p", { class: "muted" }, "Helyi értesítés az app nyitásakor. Zárt appnál is szóló riasztáshoz használd az emlékeztetőnél a „Naptárba” gombot."));
-  wrap.append(notifCard);
+  const fsCard = el("div", { class: "card" });
+  fsCard.append(el("label", {}, "Betűméret"));
+  fsCard.append(el("select", { onchange: e => h.onSetFontScale(e.target.value) },
+    ...[["small", "Kicsi"], ["normal", "Normál"], ["large", "Nagy"]].map(([v, l]) => el("option", { value: v, ...(db.settings.fontScale === v ? { selected: "" } : {}) }, l))));
+  wrap.append(fsCard);
 
-  const b = (label, fn, cls = "") => el("button", { class: cls, style: "width:100%;margin-bottom:8px", onclick: fn }, label);
+  // 4) Fontos figyelmeztetés — közvetlenül a biztonsági mentés fölé
+  wrap.append(el("div", { class: "warn-card" },
+    el("span", { class: "warn-title" }, "Fontos — mentsd az adataidat!"),
+    el("p", {}, "Az összes adatod és a telón tárolt automatikus mentések a TELEFONODON vannak. Ha törlöd a böngésző adatait, alaphelyzetbe állítod a telót, vagy az iPhone felszabadítja a helyet, MINDEN elveszhet. Ezért havonta egyszer nyomd meg lent a „Biztonsági mentés fájlba” gombot, és tedd a fájlt felhőbe vagy más biztos helyre.")));
 
+  // 5) Biztonsági mentés + Excel
   const safeCard = el("div", { class: "card" });
   safeCard.append(el("label", {}, "Biztonsági mentés (hogy ne vesszen el)"),
     b("Biztonsági mentés fájlba", h.onBackup, "primary"),
@@ -529,13 +556,11 @@ export function renderSettings(state, h) {
     el("p", { class: "muted", style: "margin:4px 0 0" }, "Táblázat, amit Excelben nyitsz meg. Ez NEM visszaállításra való — arra a fenti biztonsági mentés."));
   wrap.append(xlsCard);
 
-  const linksCard = el("div", { class: "card" });
-  linksCard.append(el("label", {}, "Kezelés"),
-    b("Kötelező kiadások / emlékeztetők", h.onOpenReminders, "primary"),
-    b("Kategóriák kezelése", h.onManageCategories),
-    b("Blokk import", h.onOpenImportView));
-  wrap.append(linksCard);
-
-  wrap.append(el("p", { class: "muted" }, "Az adatok a telefonon tárolódnak. Rendszeres backuppal véded őket telócsere ellen."));
+  // 6) Verzió (legalul)
+  const verCard = el("div", { class: "card" });
+  verCard.append(el("button", { class: "ver-box", onclick: h.onShowChangelog },
+    el("span", { class: "v" }, `Verzió ${APP_VERSION} · ${APP_DATE}`),
+    el("span", { class: "go" }, "Mi újult meg? →")));
+  wrap.append(verCard);
   return wrap;
 }

@@ -17,7 +17,7 @@ test("createDatabase seeds default categories, reminders, settings and empty map
   assert.ok(db.categories.every(c => typeof c.id === "string" && c.id.length > 0));
   assert.deepEqual(db.months, {});
   assert.deepEqual(db.reminders, []);
-  assert.deepEqual(db.settings, { theme: "system", notifications: false, accent: "blue", collapsed: {} });
+  assert.deepEqual(db.settings, { theme: "system", notifications: false, accent: "blue", collapsed: {}, fontScale: "normal" });
   assert.deepEqual(db.templates, { items: [], transfers: [] });
 });
 

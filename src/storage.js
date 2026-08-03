@@ -15,6 +15,7 @@ export function load() {
     if (!db.settings) db.settings = { theme: "system", notifications: false };
     if (!db.settings.accent) db.settings.accent = "blue";
     if (!db.settings.collapsed) db.settings.collapsed = {};
+    if (!db.settings.fontScale) db.settings.fontScale = "normal";
     return db;
   } catch {
     return createDatabase();

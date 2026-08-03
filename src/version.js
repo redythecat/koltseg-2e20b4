@@ -1,6 +1,16 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.3", date: "2026-08-03", notes: [
+      "Törlésnél megerősítést kér (tétel, utalás, emlékeztető) — véletlen ellen.",
+      "Üres-állapot súgó, ha még nincs tétel a hónapban.",
+      "„Hogyan használd” súgó a Beállításokban.",
+      "Betűméret: kicsi / normál / nagy — az egész app arányosan igazodik.",
+      "Áttekintő statisztika: hol költöttél a legtöbbet, legnagyobb tétel, éves összeg.",
+      "A Beállítások fül most fogaskerék ikon, és átláthatóbb a menürend.",
+    ],
+  },
+  {
     v: "2.2", date: "2026-08-03", notes: [
       "A lenti menü nyila is nagyobb, cuki köröcskében.",
       "Egyértelműbb szöveg: „Várható havi kiadás”.",

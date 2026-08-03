@@ -15,7 +15,7 @@ export function createDatabase() {
     version: 1,
     categories: DEFAULT_CATEGORIES.map((name, i) => ({ id: genId("cat"), name, order: i })),
     reminders: [],
-    settings: { theme: "system", notifications: false, accent: "blue", collapsed: {} },
+    settings: { theme: "system", notifications: false, accent: "blue", collapsed: {}, fontScale: "normal" },
     months: {},
     templates: { items: [], transfers: [] },
   };
@@ -153,6 +153,32 @@ export function monthOverview(db, monthKey) {
     });
   const totalExpense = expenseItems + expenseOut;
   return { income, expenseItems, expenseOut, totalExpense, balance: income - totalExpense, byCategory, cash, card };
+}
+
+// Hasznos statisztikák egy hónapra.
+export function monthStats(db, monthKey) {
+  const m = db.months[monthKey];
+  const items = m ? m.items : [];
+  let topStore = null, biggestItem = null;
+  const byStore = {};
+  for (const it of items) {
+    const s = (it.store || "").trim();
+    if (s) byStore[s] = (byStore[s] || 0) + it.price;
+    if (!biggestItem || it.price > biggestItem.price) biggestItem = { name: it.name, price: Math.round(it.price), store: s };
+  }
+  for (const [name, sum] of Object.entries(byStore)) {
+    if (!topStore || sum > topStore.sum) topStore = { name, sum: Math.round(sum) };
+  }
+  return { topStore, biggestItem };
+}
+
+// Egy adott év összes bolti kiadása (minden hónap tétele).
+export function yearTotal(db, year) {
+  let sum = 0;
+  for (const key of Object.keys(db.months)) {
+    if (key.startsWith(year + "-")) sum += db.months[key].items.reduce((s, i) => s + i.price, 0);
+  }
+  return Math.round(sum);
 }
 
 // --- Emlékeztetők (kötelező kiadások) ---

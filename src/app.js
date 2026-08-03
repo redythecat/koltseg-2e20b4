@@ -1,5 +1,5 @@
 import { load, save, downloadBackup, readBackupFile, maybeAutoBackup, listBackups, shareOrDownloadBackup } from "./storage.js";
-import { applyTheme, watchSystemTheme, applyAccent } from "./theme.js";
+import { applyTheme, watchSystemTheme, applyAccent, applyFontScale } from "./theme.js";
 import {
   addItem, updateItem, moveItem, deleteItem,
   addCategory, renameCategory, deleteCategory,
@@ -10,7 +10,7 @@ import {
 import { decodeImport } from "./codec.js";
 import { downloadXlsx, expenseRows, transferRows } from "./xlsx.js";
 import { reminderToIcs } from "./ics.js";
-import { toast, confirmModal, choiceModal, changelogModal } from "./dialog.js";
+import { toast, confirmModal, choiceModal, changelogModal, helpModal } from "./dialog.js";
 import { CHANGELOG } from "./version.js";
 import {
   el, shiftMonth, findCategoryIdByName,
@@ -50,6 +50,7 @@ const state = {
 
 applyTheme(state.db.settings.theme);
 applyAccent(state.db.settings.accent);
+applyFontScale(state.db.settings.fontScale);
 watchSystemTheme(() => state.db.settings.theme);
 const didAutoBackup = maybeAutoBackup(state.db);
 
@@ -69,7 +70,10 @@ function saveItem(f) {
   }
   state.editing = null; commit();
 }
-function removeItem(id) { deleteItem(state.db, state.month, id); state.editing = null; commit(); }
+async function removeItem(id) {
+  if (!(await confirmModal("Biztosan törlöd ezt a tételt?", { okText: "Törlés", cancelText: "Mégse", danger: true }))) return;
+  deleteItem(state.db, state.month, id); state.editing = null; commit();
+}
 
 // --- Utalás ---
 function saveTransfer(f) {
@@ -78,7 +82,10 @@ function saveTransfer(f) {
   else updateTransfer(state.db, state.month, cur, { name: f.name, amount: f.amount, date: f.date, partner: f.partner, note: f.note });
   state.editing = null; commit();
 }
-function removeTransfer(id) { deleteTransfer(state.db, state.month, id); state.editing = null; commit(); }
+async function removeTransfer(id) {
+  if (!(await confirmModal("Biztosan törlöd ezt az utalást?", { okText: "Törlés", cancelText: "Mégse", danger: true }))) return;
+  deleteTransfer(state.db, state.month, id); state.editing = null; commit();
+}
 
 // --- Kategória ---
 async function onDeleteCategory(c) {
@@ -99,7 +106,10 @@ function saveReminder(f) {
   else updateReminder(state.db, cur, f);
   state.editing = null; commit();
 }
-function removeReminder(id) { deleteReminder(state.db, id); state.editing = null; commit(); }
+async function removeReminder(id) {
+  if (!(await confirmModal("Biztosan törlöd ezt az emlékeztetőt?", { okText: "Törlés", cancelText: "Mégse", danger: true }))) return;
+  deleteReminder(state.db, id); state.editing = null; commit();
+}
 
 // --- Import ---
 function extractPayload(input) {
@@ -132,6 +142,8 @@ const handlers = {
   onSetMonth: (key) => { state.month = key; render(); },
   onToggleCollapse: (key) => { const c = state.db.settings.collapsed; c[key] = !c[key]; if (!c[key]) delete c[key]; commit(); },
   onSetAccent: (key) => { state.db.settings.accent = key; applyAccent(key); commit(); },
+  onSetFontScale: (v) => { state.db.settings.fontScale = v; applyFontScale(v); commit(); },
+  onOpenHelp: () => helpModal(),
   onShowChangelog: () => {
     const today = new Date().toISOString().slice(0, 10);
     const recent = CHANGELOG.filter(e => daysBetween(e.date, today) <= 14);
@@ -188,7 +200,7 @@ const handlers = {
   onOpenRestore: () => { state.view = "restore"; render(); },
   onRestoreFile: () => {
     const inp = document.createElement("input"); inp.type = "file"; inp.accept = "application/json";
-    inp.onchange = async () => { try { state.db = await readBackupFile(inp.files[0]); applyTheme(state.db.settings.theme); applyAccent(state.db.settings.accent); state.view = "settings"; commit(); toast("Visszaállítva fájlból."); } catch (e) { toast(e.message); } };
+    inp.onchange = async () => { try { state.db = await readBackupFile(inp.files[0]); applyTheme(state.db.settings.theme); applyAccent(state.db.settings.accent); applyFontScale(state.db.settings.fontScale); state.view = "settings"; commit(); toast("Visszaállítva fájlból."); } catch (e) { toast(e.message); } };
     inp.click();
   },
   onRestoreSnapshot: async (i) => {
@@ -197,12 +209,13 @@ const handlers = {
     const yes = await confirmModal(`Visszaállítod ezt a mentést?\n${s.date}\nA mostani adat felülíródik.`, { okText: "Visszaállítás", cancelText: "Mégse", danger: true });
     if (!yes) return;
     state.db = JSON.parse(JSON.stringify(s.data));
-    applyTheme(state.db.settings.theme); applyAccent(state.db.settings.accent);
+    applyTheme(state.db.settings.theme); applyAccent(state.db.settings.accent); applyFontScale(state.db.settings.fontScale);
     state.view = "settings"; commit(); toast("Visszaállítva.");
   },
   onBackFromRestore: () => { state.view = "settings"; render(); },
 };
 
+const GEAR_SVG = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>';
 const TABS = [["month", "Kiadások"], ["transfers", "Utalások"], ["overview", "Áttekintő"], ["settings", "Beállítások"]];
 function renderTabbar() {
   const bar = document.getElementById("tabbar");
@@ -215,7 +228,11 @@ function renderTabbar() {
   const inner = el("div", { class: "tabbar-inner" });
   inner.append(el("button", { class: "nav-toggle", "aria-label": "Menü elrejtése", onclick: () => { state.navHidden = true; render(); } }, el("span", { class: "chev" }, "▾")));
   for (const [view, label] of TABS) {
-    inner.append(el("button", { class: state.view === view && !state.editing ? "primary" : "", onclick: () => { state.editing = null; state.importPreview = null; state.view = view; render(); } }, label));
+    const active = state.view === view && !state.editing;
+    const isGear = view === "settings";
+    const btn = el("button", { class: (active ? "primary" : "") + (isGear ? " tab-icon" : ""), "aria-label": label, title: isGear ? label : null, onclick: () => { state.editing = null; state.importPreview = null; state.view = view; render(); } }, isGear ? "" : label);
+    if (isGear) btn.innerHTML = GEAR_SVG;
+    inner.append(btn);
   }
   bar.replaceChildren(inner);
 }

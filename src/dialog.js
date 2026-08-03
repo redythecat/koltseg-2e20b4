@@ -43,6 +43,49 @@ export function confirmModal(message, { okText = "Igen", cancelText = "Mégse", 
   });
 }
 
+// Rövid "Hogyan használd" súgó.
+export function helpModal() {
+  const sections = [
+    ["Tétel felvétele", ["„Új tétel” gombbal kézzel, vagy a Gyorslistából egy koppintással (a korábban felvett tételeidből)."]],
+    ["Blokk beolvasása", ["Beállítások → Blokk import → „Beolvasó szöveg másolása”.", "A Claude appban illeszd be a blokk fotójával; a választ (link vagy JSON) hozd vissza a „Beolvasás” mezőbe."]],
+    ["Kötelező kiadások", ["Vedd fel a rendszereseket (törlesztő, TB, hitel).", "A „Naptárba” gomb a telefon naptárába teszi, riasztással.", "A Kiadások tetején mindig látod az esedékeseket, és kipipálhatod, ha fizetted."]],
+    ["Havi keret", ["A kategóriánál megadhatsz havi limitet; a Kiadásoknál sáv mutatja, hol tartasz, és pirosra vált túllépéskor."]],
+    ["Utalások és Áttekintő", ["Utalások: bejövő/kimenő banki tételek.", "Áttekintő: bevétel/kiadás/egyenleg, összehasonlítás az előző hónappal, becslés és statisztika."]],
+    ["Mentés (fontos!)", ["Havonta egyszer: Beállítások → „Biztonsági mentés fájlba”, és tedd felhőbe/emailbe.", "Az app hetente magától is ment a telóra (Beállítások → Visszaállítás)."]],
+    ["Excel", ["A Beállítások → Excel táblázat csak megnézésre/nyomtatásra való, nem visszaállításra."]],
+    ["Kinézet", ["Beállításokban: sötét/világos téma, kiemelő szín, betűméret."]],
+  ];
+  const ov = overlay();
+  const box = document.createElement("div");
+  box.className = "modal help";
+  const h = document.createElement("h3");
+  h.textContent = "Hogyan használd";
+  h.style.margin = "0 0 12px";
+  box.append(h);
+  for (const [title, items] of sections) {
+    const head = document.createElement("div");
+    head.className = "cl-head";
+    head.textContent = title;
+    box.append(head);
+    const ul = document.createElement("ul");
+    ul.className = "cl-list";
+    for (const it of items) {
+      const li = document.createElement("li");
+      li.textContent = it;
+      ul.append(li);
+    }
+    box.append(ul);
+  }
+  const close_ = document.createElement("button");
+  close_.className = "primary";
+  close_.style.cssText = "width:100%;margin-top:8px";
+  close_.textContent = "Bezárás";
+  close_.onclick = () => close(ov);
+  box.append(close_);
+  ov.onclick = (e) => { if (e.target === ov) close(ov); };
+  ov.append(box);
+}
+
 // Verzió-napló ablak. entries: [{ v, date, notes: [...] }]
 // 20 soronként tölt be (egy bejegyzés fejléce + pontjai = sorok), hogy ne terhelje az eszközt.
 const CHANGELOG_PAGE_ROWS = 20;

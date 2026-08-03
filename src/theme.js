@@ -14,6 +14,12 @@ export function applyAccent(key) {
   document.documentElement.style.setProperty("--accent", a.hex);
 }
 
+// Betűméret: "small" | "normal" | "large" — a data-fontscale-t a CSS skálázza (rem-alapú UI).
+export function applyFontScale(scale) {
+  const s = scale === "small" || scale === "large" ? scale : "normal";
+  document.documentElement.setAttribute("data-fontscale", s);
+}
+
 export function applyTheme(theme) {
   const sysLight = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
   const eff = theme === "system" ? (sysLight ? "light" : "dark") : theme;
