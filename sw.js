@@ -1,8 +1,8 @@
-const CACHE = "koltseg-v6";
+const CACHE = "koltseg-v7";
 const ASSETS = [
   ".", "index.html", "styles.css", "manifest.webmanifest",
   "src/app.js", "src/ui.js", "src/model.js", "src/storage.js", "src/codec.js",
-  "src/csv.js", "src/ics.js", "src/theme.js", "src/dialog.js",
+  "src/csv.js", "src/ics.js", "src/theme.js", "src/dialog.js", "src/version.js",
   "icons/icon-192.png?v=2", "icons/icon-512.png?v=2",
 ];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())); });

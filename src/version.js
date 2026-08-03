@@ -1,0 +1,38 @@
+// Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
+export const CHANGELOG = [
+  {
+    v: "1.4", date: "2026-08-03", notes: [
+      "Verzió-ablak: itt látod, mikor mi újult meg.",
+      "iPhone-on is szépen működik (ikon, telepítés).",
+    ],
+  },
+  {
+    v: "1.3", date: "2026-08-03", notes: [
+      "Új név és arany érme-logó.",
+      "Szebb, appon belüli kérdés-ablakok (eltűnt a csúnya webcím a megerősítéseknél).",
+    ],
+  },
+  {
+    v: "1.2", date: "2026-08-03", notes: [
+      "A kötelező kiadások mindig legfelül; 3 napon belül pirossal figyelmeztet.",
+      "Év és hónap kiválasztható listából.",
+      "Választható kiemelő szín, sötét/világos téma.",
+      "A kategóriák és utalások összecsukhatók.",
+      "Fektetett nézetben elrejthető az alsó menü.",
+    ],
+  },
+  {
+    v: "1.1", date: "2026-08-03", notes: [
+      "Blokk beolvasása: a Claude-tól kapott linkkel egy koppintással bekerülnek a tételek.",
+      "Emlékeztetők a telefon naptárába tehetők, riasztással.",
+    ],
+  },
+  {
+    v: "1.0", date: "2026-08-03", notes: [
+      "Első verzió: kiadások kategóriánként, utalások, havi áttekintő, export és mentés.",
+    ],
+  },
+];
+
+export const APP_VERSION = CHANGELOG[0].v;
+export const APP_DATE = CHANGELOG[0].date;

@@ -43,6 +43,39 @@ export function confirmModal(message, { okText = "Igen", cancelText = "Mégse", 
   });
 }
 
+// Verzió-napló ablak. entries: [{ v, date, notes: [...] }]
+export function changelogModal(entries) {
+  const ov = overlay();
+  const box = document.createElement("div");
+  box.className = "modal changelog";
+  const h = document.createElement("h3");
+  h.textContent = "Mi újult meg?";
+  h.style.margin = "0 0 12px";
+  box.append(h);
+  for (const e of entries) {
+    const head = document.createElement("div");
+    head.className = "cl-head";
+    head.textContent = `${e.v} · ${e.date}`;
+    box.append(head);
+    const ul = document.createElement("ul");
+    ul.className = "cl-list";
+    for (const n of e.notes) {
+      const li = document.createElement("li");
+      li.textContent = n;
+      ul.append(li);
+    }
+    box.append(ul);
+  }
+  const close_ = document.createElement("button");
+  close_.className = "primary";
+  close_.style.cssText = "width:100%;margin-top:8px";
+  close_.textContent = "Bezárás";
+  close_.onclick = () => close(ov);
+  box.append(close_);
+  ov.onclick = (e) => { if (e.target === ov) close(ov); };
+  ov.append(box);
+}
+
 // options: [{ label, value }]; visszaad egy value-t vagy null-t (mégse).
 export function choiceModal(message, options) {
   return new Promise((resolve) => {

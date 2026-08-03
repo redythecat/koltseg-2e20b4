@@ -9,7 +9,8 @@ import {
 import { decodeImport } from "./codec.js";
 import { expensesCsv, transfersCsv } from "./csv.js";
 import { reminderToIcs } from "./ics.js";
-import { toast, confirmModal, choiceModal } from "./dialog.js";
+import { toast, confirmModal, choiceModal, changelogModal } from "./dialog.js";
+import { CHANGELOG } from "./version.js";
 import {
   el, shiftMonth, findCategoryIdByName,
   renderMonthView, renderItemForm, renderCategoryManager,
@@ -128,6 +129,7 @@ const handlers = {
   onSetMonth: (key) => { state.month = key; render(); },
   onToggleCollapse: (key) => { const c = state.db.settings.collapsed; c[key] = !c[key]; if (!c[key]) delete c[key]; commit(); },
   onSetAccent: (key) => { state.db.settings.accent = key; applyAccent(key); commit(); },
+  onShowChangelog: () => changelogModal(CHANGELOG),
   onAddItem: () => { state.editing = { type: "item", id: null }; render(); },
   onEditItem: (id) => { state.editing = { type: "item", id }; render(); },
   onAddTransfer: (dir) => { state.editing = { type: "transfer", id: null, dir }; render(); },

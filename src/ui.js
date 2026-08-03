@@ -1,6 +1,7 @@
 import { monthOverview, categoryTotal, remindersDueInMonth, occurrencesInMonth, dueSummaryForMonth } from "./model.js";
 import { ACCENTS } from "./theme.js";
 import { toast } from "./dialog.js";
+import { APP_VERSION, APP_DATE } from "./version.js";
 
 const YEARS = Array.from({ length: 2100 - 2025 + 1 }, (_, i) => 2025 + i);
 const MONTH_SHORT = ["jan.", "feb.", "márc.", "ápr.", "máj.", "jún.", "júl.", "aug.", "szept.", "okt.", "nov.", "dec."];
@@ -410,6 +411,12 @@ export function renderSettings(state, h) {
   const { db } = state;
   const wrap = el("div", {});
   wrap.append(el("h2", {}, "Beállítások"));
+
+  const verCard = el("div", { class: "card" });
+  verCard.append(el("button", { class: "ver-box", onclick: h.onShowChangelog },
+    el("span", { class: "v" }, `Verzió ${APP_VERSION} · ${APP_DATE}`),
+    el("span", { class: "go" }, "Mi újult meg? →")));
+  wrap.append(verCard);
 
   const themeCard = el("div", { class: "card" });
   themeCard.append(el("label", {}, "Téma"));
