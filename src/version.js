@@ -1,6 +1,26 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "1.7", date: "2026-08-03", notes: [
+      "A blokk-beolvasó szöveg mostantól a te saját kategóriáidhoz igazodik.",
+      "Egyértelműbb gombnevek: „Biztonsági mentés fájlba” (visszaállításhoz) és külön az Excel táblázat.",
+      "A verzió-napló csak az elmúlt 2 hét változásait mutatja.",
+    ],
+  },
+  {
+    v: "1.6", date: "2026-08-03", notes: [
+      "Az export mostantól Excel (.xlsx) fájl — az Excel egyből, rendesen oszlopokba nyitja, a számok számként.",
+      "Heti mentésnél az app felajánlja, hogy fájlba/felhőbe is elmentsd — egy koppintás (iPhone-on is).",
+      "Feltűnő figyelmeztetés a Beállításokban: az adat a telefonon van, mentsd rendszeresen.",
+    ],
+  },
+  {
+    v: "1.5", date: "2026-08-03", notes: [
+      "Automatikus heti mentés: megnyitáskor készül, az utolsó 3 elérhető a Visszaállításnál.",
+      "A verzió-napló 20 soronként tölt be, hogy kímélje a telefont.",
+    ],
+  },
+  {
     v: "1.4", date: "2026-08-03", notes: [
       "Verzió-ablak: itt látod, mikor mi újult meg.",
       "iPhone-on is szépen működik (ikon, telepítés).",

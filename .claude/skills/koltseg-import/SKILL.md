@@ -18,8 +18,11 @@ tételeket, kategorizálni, és egy **egy-koppintásos import-linket** adni.
 - **Macska** — macskaalom, -kaja, játék
 - **Luxus** — nasi, csoki, rendelt kaja, videojáték, egyéb élvezeti cikk
 
-Ha egy tétel egyik előre megadott kategóriába sem illik, tedd a legközelebbibe, és jelezd.
-A felhasználó az appban úgyis átállíthatja.
+**Fontos:** a kategóriák felhasználónként eltérhetnek (mindenki átnevezheti/bővítheti a saját
+appjában). Mindig a felhasználó AKTUÁLIS kategóriáit használd — ha ismered őket, azok szerint
+sorolj; ha nem, kérdezd meg, vagy hagyd az app „Blokk import → Beolvasó szöveg másolása" gombjára,
+ami az adott app saját kategóriáival gyártja a promptot. A fentiek az alapértelmezett kategóriák.
+Ha egy tétel egyikbe sem illik, tedd a legközelebbibe — a felhasználó az appban átállíthatja.
 
 ## Adatformátum
 Építs egy ilyen JSON objektumot:

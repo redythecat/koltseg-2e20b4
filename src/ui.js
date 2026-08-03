@@ -2,6 +2,7 @@ import { monthOverview, categoryTotal, remindersDueInMonth, occurrencesInMonth, 
 import { ACCENTS } from "./theme.js";
 import { toast } from "./dialog.js";
 import { APP_VERSION, APP_DATE } from "./version.js";
+import { listBackups } from "./storage.js";
 
 const YEARS = Array.from({ length: 2100 - 2025 + 1 }, (_, i) => 2025 + i);
 const MONTH_SHORT = ["jan.", "feb.", "márc.", "ápr.", "máj.", "jún.", "júl.", "aug.", "szept.", "okt.", "nov.", "dec."];
@@ -405,6 +406,43 @@ export function renderRemindersView(state, h) {
   return wrap;
 }
 
+// --- Visszaállítás ---
+
+export function renderRestoreView(state, h) {
+  const wrap = el("div", {});
+  wrap.append(el("div", { class: "topbar" }, el("h2", {}, "Visszaállítás"), el("button", { class: "ghost", onclick: h.onBack }, "Vissza")));
+
+  const snaps = listBackups();
+  const auto = el("div", { class: "card" });
+  auto.append(el("label", {}, "Automatikus mentések (a telón)"));
+  if (!snaps.length) {
+    auto.append(el("div", { class: "muted" }, "Még nincs automatikus mentés. Hetente egy készül, amikor megnyitod az appot."));
+  } else {
+    snaps.forEach((s, i) => {
+      auto.append(el("div", { class: "item" },
+        el("div", {}, el("div", {}, s.date), el("small", {}, itemsCount(s.data))),
+        el("button", { class: "ghost", onclick: () => h.onRestoreSnapshot(i) }, "Visszaállítás")));
+    });
+  }
+  wrap.append(auto);
+
+  const file = el("div", { class: "card" });
+  file.append(el("label", {}, "Visszaállítás fájlból"));
+  file.append(el("button", { class: "primary", style: "width:100%", onclick: h.onRestoreFile }, "Fájl kiválasztása"));
+  wrap.append(file);
+
+  wrap.append(el("div", { class: "card", style: "border-color:var(--accent)" },
+    el("strong", {}, "Fontos"),
+    el("p", { class: "muted", style: "margin:6px 0 0" }, "A telón tárolt mentések elveszhetnek, ha a telefon adata törlődik vagy elveszik a telefon. Ezért havonta egyszer a „Biztonsági mentés fájlba” gombbal ments ki egy fájlt is, és tedd felhőbe vagy más biztos helyre.")));
+  return wrap;
+}
+
+function itemsCount(db) {
+  let items = 0, transfers = 0;
+  for (const m of Object.values(db.months || {})) { items += (m.items || []).length; transfers += (m.transfers || []).length; }
+  return `${items} tétel · ${transfers} utalás · ${(db.reminders || []).length} emlékeztető`;
+}
+
 // --- Beállítások ---
 
 export function renderSettings(state, h) {
@@ -417,6 +455,10 @@ export function renderSettings(state, h) {
     el("span", { class: "v" }, `Verzió ${APP_VERSION} · ${APP_DATE}`),
     el("span", { class: "go" }, "Mi újult meg? →")));
   wrap.append(verCard);
+
+  wrap.append(el("div", { class: "warn-card" },
+    el("span", { class: "warn-title" }, "Fontos — mentsd az adataidat!"),
+    el("p", {}, "Az összes adatod és a telón tárolt automatikus mentések a TELEFONODON vannak. Ha törlöd a böngésző adatait, alaphelyzetbe állítod a telót, vagy az iPhone felszabadítja a helyet, MINDEN elveszhet. Ezért havonta egyszer nyomd meg lent a „Biztonsági mentés fájlba” gombot, és tedd a fájlt felhőbe vagy más biztos helyre.")));
 
   const themeCard = el("div", { class: "card" });
   themeCard.append(el("label", {}, "Téma"));
@@ -444,13 +486,20 @@ export function renderSettings(state, h) {
   wrap.append(notifCard);
 
   const b = (label, fn, cls = "") => el("button", { class: cls, style: "width:100%;margin-bottom:8px", onclick: fn }, label);
-  const dataCard = el("div", { class: "card" });
-  dataCard.append(el("label", {}, "Adatok"),
-    b("Export — ez a hónap (CSV)", h.onExportMonth, "primary"),
-    b("Export — minden hónap (CSV)", h.onExportAll),
-    b("Backup mentése (JSON)", h.onBackup),
-    b("Backup visszatöltése", h.onRestore));
-  wrap.append(dataCard);
+
+  const safeCard = el("div", { class: "card" });
+  safeCard.append(el("label", {}, "Biztonsági mentés (hogy ne vesszen el)"),
+    b("Biztonsági mentés fájlba", h.onBackup, "primary"),
+    b("Visszaállítás mentésből", h.onOpenRestore),
+    el("p", { class: "muted", style: "margin:4px 0 0" }, "Ezt tedd el havonta (felhőbe vagy emailbe küldve) — EBBŐL állítható vissza minden az appban."));
+  wrap.append(safeCard);
+
+  const xlsCard = el("div", { class: "card" });
+  xlsCard.append(el("label", {}, "Excel táblázat (megnézni / nyomtatni)"),
+    b("Excel – ez a hónap", h.onExportMonth),
+    b("Excel – minden hónap", h.onExportAll),
+    el("p", { class: "muted", style: "margin:4px 0 0" }, "Táblázat, amit Excelben nyitsz meg. Ez NEM visszaállításra való — arra a fenti biztonsági mentés."));
+  wrap.append(xlsCard);
 
   const linksCard = el("div", { class: "card" });
   linksCard.append(el("label", {}, "Kezelés"),

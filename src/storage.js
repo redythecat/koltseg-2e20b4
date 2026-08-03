@@ -1,6 +1,9 @@
-import { createDatabase } from "./model.js";
+import { createDatabase, daysBetween } from "./model.js";
 
 export const KEY = "koltseg-db-v1";
+export const BACKUPS_KEY = "koltseg-backups-v1";
+export const AUTO_KEY = "koltseg-autobackup-last";
+const MAX_SNAPSHOTS = 3;
 
 export function load() {
   try {
@@ -30,6 +33,53 @@ export function downloadBackup(db) {
   a.download = `koltseg-backup-${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+// --- Belső (telón tárolt) auto-mentések ---
+
+export function listBackups() {
+  try {
+    const raw = localStorage.getItem(BACKUPS_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+export function addSnapshot(db) {
+  const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
+  const list = listBackups();
+  list.unshift({ date: stamp, data: JSON.parse(JSON.stringify(db)) });
+  localStorage.setItem(BACKUPS_KEY, JSON.stringify(list.slice(0, MAX_SNAPSHOTS)));
+}
+
+// Heti auto-mentés megnyitáskor: ha eltelt 7+ nap az utolsó óta és van mit menteni.
+// Igaz értékkel tér vissza, ha most készített egy mentést.
+export function maybeAutoBackup(db) {
+  const hasData = (db.reminders && db.reminders.length) ||
+    Object.values(db.months || {}).some(m => (m.items && m.items.length) || (m.transfers && m.transfers.length));
+  if (!hasData) return false;
+  const today = new Date().toISOString().slice(0, 10);
+  const last = localStorage.getItem(AUTO_KEY);
+  if (last && daysBetween(last, today) < 7) return false;
+  addSnapshot(db);
+  localStorage.setItem(AUTO_KEY, today);
+  return true;
+}
+
+// Fájlba mentés: iPhone-on/Androidon a megosztó-lap (iCloud/Drive/email), különben letöltés.
+export async function shareOrDownloadBackup(db) {
+  const json = JSON.stringify(db, null, 2);
+  const name = `koltseg-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  try {
+    const file = new File([json], name, { type: "application/json" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: "Költség backup" });
+      return;
+    }
+  } catch { /* megszakítás vagy nem támogatott → letöltés */ }
+  downloadBackup(db);
 }
 
 export function readBackupFile(file) {

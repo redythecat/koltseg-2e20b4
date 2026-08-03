@@ -1,13 +1,13 @@
-import { load, save, downloadBackup, readBackupFile } from "./storage.js";
+import { load, save, downloadBackup, readBackupFile, maybeAutoBackup, listBackups, shareOrDownloadBackup } from "./storage.js";
 import { applyTheme, watchSystemTheme, applyAccent } from "./theme.js";
 import {
   addItem, updateItem, moveItem, deleteItem,
   addCategory, renameCategory, deleteCategory,
   addTransfer, updateTransfer, deleteTransfer,
-  addReminder, updateReminder, deleteReminder, toggleReminderPaid, remindersDueOn,
+  addReminder, updateReminder, deleteReminder, toggleReminderPaid, remindersDueOn, daysBetween,
 } from "./model.js";
 import { decodeImport } from "./codec.js";
-import { expensesCsv, transfersCsv } from "./csv.js";
+import { downloadXlsx, expenseRows, transferRows } from "./xlsx.js";
 import { reminderToIcs } from "./ics.js";
 import { toast, confirmModal, choiceModal, changelogModal } from "./dialog.js";
 import { CHANGELOG } from "./version.js";
@@ -15,7 +15,7 @@ import {
   el, shiftMonth, findCategoryIdByName,
   renderMonthView, renderItemForm, renderCategoryManager,
   renderTransfersView, renderTransferForm, renderOverview,
-  renderImportView, renderRemindersView, renderReminderForm, renderSettings,
+  renderImportView, renderRemindersView, renderReminderForm, renderSettings, renderRestoreView,
 } from "./ui.js";
 
 function currentMonthKey() {
@@ -23,14 +23,18 @@ function currentMonthKey() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-const IMPORT_PROMPT = `Ez egy blokk fotója a "Költség" nevű költségkövető appomhoz. Olvasd ki a tételeket, és add vissza CSAK egy JSON-t (semmi más szöveg), pontosan ebben a formátumban:
-{"month":"YYYY-MM","items":[{"name":"Tejföl","qty":2,"price":780,"store":"Lidl","date":"YYYY-MM-DD","payment":"card","category":"Élelmiszer"}]}
+function buildImportPrompt() {
+  const cats = state.db.categories.slice().sort((a, b) => a.order - b.order).map(c => c.name);
+  const first = cats[0] || "Egyéb";
+  return `Ez egy blokk fotója a "Költség" nevű költségkövető appomhoz. Olvasd ki a tételeket, és add vissza CSAK egy JSON-t (semmi más szöveg), pontosan ebben a formátumban:
+{"month":"YYYY-MM","items":[{"name":"Tejföl","qty":2,"price":780,"store":"Lidl","date":"YYYY-MM-DD","payment":"card","category":"${first}"}]}
 Szabályok:
 - price = az adott sor teljes összege forintban, egész szám (nem egységár). qty = darabszám (ha nincs, 1).
 - payment: kártya = "card", készpénz = "cash" (a blokkon általában rajta van).
-- category CSAK ezek egyike legyen: "Élelmiszer" (hétköznapi kaja: hús, zöldség, kenyér, tej, kávé, fűszer...), "Alkohol/üdítő" (alkohol és üdítők), "Tisztítószer" (takarítás és tisztálkodás: mosószer, wc-papír, tusfürdő, izzadásgátló...), "Macska" (alom, macskakaja, játék), "Luxus" (nasi, csoki, rendelt kaja, videojáték).
+- category CSAK ezek egyike legyen, pontosan így írva: ${cats.map(c => `"${c}"`).join(", ")}. Sorold mindegyik tételt a legmegfelelőbbe; ha egyik sem illik, válaszd a hozzá legközelebbit.
 - month és date a blokkról; ha a hónap nem derül ki, a mostani hónap.
 Csatolom a blokk fotóját.`;
+}
 
 const state = {
   db: load(),
@@ -45,16 +49,9 @@ const state = {
 applyTheme(state.db.settings.theme);
 applyAccent(state.db.settings.accent);
 watchSystemTheme(() => state.db.settings.theme);
+const didAutoBackup = maybeAutoBackup(state.db);
 
 function commit() { save(state.db); render(); }
-
-function downloadText(name, text, type = "text/csv;charset=utf-8") {
-  const blob = new Blob([text], { type });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = name; a.click();
-  URL.revokeObjectURL(url);
-}
 
 // --- Tétel ---
 function saveItem(f) {
@@ -129,7 +126,11 @@ const handlers = {
   onSetMonth: (key) => { state.month = key; render(); },
   onToggleCollapse: (key) => { const c = state.db.settings.collapsed; c[key] = !c[key]; if (!c[key]) delete c[key]; commit(); },
   onSetAccent: (key) => { state.db.settings.accent = key; applyAccent(key); commit(); },
-  onShowChangelog: () => changelogModal(CHANGELOG),
+  onShowChangelog: () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const recent = CHANGELOG.filter(e => daysBetween(e.date, today) <= 14);
+    changelogModal(recent.length ? recent : [CHANGELOG[0]]);
+  },
   onAddItem: () => { state.editing = { type: "item", id: null }; render(); },
   onEditItem: (id) => { state.editing = { type: "item", id }; render(); },
   onAddTransfer: (dir) => { state.editing = { type: "transfer", id: null, dir }; render(); },
@@ -154,7 +155,7 @@ const handlers = {
   onOpenImport: (code) => { state.view = "import"; state.importCode = code || ""; state.importPreview = null; render(); },
   onOpenImportView: () => handlers.onOpenImport(""),
   onCopyImportPrompt: async () => {
-    try { await navigator.clipboard.writeText(IMPORT_PROMPT); toast("Kimásolva! Illeszd be a Claude appba a blokk fotójával."); }
+    try { await navigator.clipboard.writeText(buildImportPrompt()); toast("Kimásolva! Illeszd be a Claude appba a blokk fotójával."); }
     catch { toast("Nem sikerült a másolás. Másold ki kézzel a szöveget."); }
   },
   onSetTheme: (t) => { state.db.settings.theme = t; applyTheme(t); commit(); },
@@ -169,14 +170,25 @@ const handlers = {
     }
     commit();
   },
-  onExportMonth: () => { downloadText(`koltseg-kiadasok-${state.month}.csv`, expensesCsv(state.db, state.month)); downloadText(`koltseg-utalasok-${state.month}.csv`, transfersCsv(state.db, state.month)); },
-  onExportAll: () => { downloadText(`koltseg-kiadasok-mind.csv`, expensesCsv(state.db, null)); downloadText(`koltseg-utalasok-mind.csv`, transfersCsv(state.db, null)); },
-  onBackup: () => downloadBackup(state.db),
-  onRestore: () => {
+  onExportMonth: () => downloadXlsx([{ name: "Kiadások", rows: expenseRows(state.db, state.month) }, { name: "Utalások", rows: transferRows(state.db, state.month) }], `koltseg-${state.month}.xlsx`),
+  onExportAll: () => downloadXlsx([{ name: "Kiadások", rows: expenseRows(state.db, null) }, { name: "Utalások", rows: transferRows(state.db, null) }], `koltseg-mind.xlsx`),
+  onBackup: () => shareOrDownloadBackup(state.db),
+  onOpenRestore: () => { state.view = "restore"; render(); },
+  onRestoreFile: () => {
     const inp = document.createElement("input"); inp.type = "file"; inp.accept = "application/json";
-    inp.onchange = async () => { try { state.db = await readBackupFile(inp.files[0]); applyTheme(state.db.settings.theme); applyAccent(state.db.settings.accent); commit(); toast("Backup visszatöltve."); } catch (e) { toast(e.message); } };
+    inp.onchange = async () => { try { state.db = await readBackupFile(inp.files[0]); applyTheme(state.db.settings.theme); applyAccent(state.db.settings.accent); state.view = "settings"; commit(); toast("Visszaállítva fájlból."); } catch (e) { toast(e.message); } };
     inp.click();
   },
+  onRestoreSnapshot: async (i) => {
+    const s = listBackups()[i];
+    if (!s) return;
+    const yes = await confirmModal(`Visszaállítod ezt a mentést?\n${s.date}\nA mostani adat felülíródik.`, { okText: "Visszaállítás", cancelText: "Mégse", danger: true });
+    if (!yes) return;
+    state.db = JSON.parse(JSON.stringify(s.data));
+    applyTheme(state.db.settings.theme); applyAccent(state.db.settings.accent);
+    state.view = "settings"; commit(); toast("Visszaállítva.");
+  },
+  onBackFromRestore: () => { state.view = "settings"; render(); },
 };
 
 const TABS = [["month", "Kiadások"], ["transfers", "Utalások"], ["overview", "Áttekintő"], ["settings", "Beállítások"]];
@@ -224,6 +236,8 @@ function render() {
     }));
   } else if (state.view === "import") {
     root.append(renderImportView(state, { initialCode: state.importCode, onDecode: decodeToPreview, onConfirm: confirmImport, onCopyPrompt: handlers.onCopyImportPrompt, onBack: () => { state.view = "settings"; render(); } }));
+  } else if (state.view === "restore") {
+    root.append(renderRestoreView(state, { onRestoreSnapshot: handlers.onRestoreSnapshot, onRestoreFile: handlers.onRestoreFile, onBack: handlers.onBackFromRestore }));
   } else if (state.view === "settings") {
     root.append(renderSettings(state, handlers));
   } else {
@@ -253,6 +267,12 @@ function render() {
   const due = remindersDueOn(state.db, new Date().toISOString().slice(0, 10));
   for (const r of due) new Notification("Ma esedékes", { body: r.name + (r.amount != null && r.amount !== "" ? ` – ${r.amount} Ft` : ""), tag: "koltseg-" + r.id });
 })();
+
+// Ha most készült heti auto-mentés, ajánljuk fel fájlba/felhőbe mentésre (egy koppintás).
+if (didAutoBackup) {
+  confirmModal("Elkészült a heti biztonsági mentés a telón. Mentsd el fájlba / felhőbe is? (ajánlott)", { okText: "Igen, mentés", cancelText: "Most nem" })
+    .then(yes => { if (yes) shareOrDownloadBackup(state.db); });
+}
 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js").catch(() => {});
