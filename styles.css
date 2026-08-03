@@ -13,7 +13,7 @@ body { margin: 0; background: var(--bg); color: var(--fg);
 #app { max-width: 640px; margin: 0 auto; padding: 12px 12px 96px; }
 h1, h2, h3 { margin: 0 0 8px; }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
-.month-nav { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; }
+.month-nav { display: flex; align-items: center; gap: 8px; width: 100%; }
 button { font: inherit; color: var(--fg); background: var(--card); border: 1px solid var(--line);
   border-radius: var(--radius); padding: 12px 14px; min-height: 48px; cursor: pointer; }
 button.primary { background: var(--accent); border-color: var(--accent); color: #06121f; font-weight: 600; }
@@ -30,6 +30,9 @@ button.ghost { background: transparent; }
   background: var(--card); border-top: 1px solid var(--line); }
 .tabbar-inner { display: flex; gap: 6px; width: 100%; max-width: 640px; margin: 0 auto; }
 .tabbar button { flex: 1; min-height: 52px; padding: 8px 4px; font-size: 14px; }
+.nav-toggle { flex: none !important; width: 44px; color: var(--muted); }
+.tabbar.hidden { background: transparent; border-top: none; padding: 8px; pointer-events: none; }
+.tabbar .nav-handle { pointer-events: auto; flex: none; width: 56px; min-height: 40px; background: var(--card); border: 1px solid var(--line); opacity: 0.95; }
 input, select, textarea { font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line);
   border-radius: 10px; padding: 12px; width: 100%; min-height: 48px; }
 label { display: block; color: var(--muted); font-size: 13px; margin: 8px 0 4px; }
@@ -40,3 +43,28 @@ label { display: block; color: var(--muted); font-size: 13px; margin: 8px 0 4px;
 .pos { color: var(--pos); font-weight: 600; } .neg { color: var(--neg); font-weight: 600; }
 .quick { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
 .quick button { min-height: 40px; padding: 8px 10px; }
+
+/* Összecsukható fejlécek + hangsúlyos címek */
+.collapse-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
+  background: transparent; border: none; padding: 4px 0; min-height: 44px; text-align: left; }
+.collapse-head .left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.chev { color: var(--muted); font-size: 13px; width: 14px; flex: none; }
+.sec-title { font-size: 19px; font-weight: 800; letter-spacing: -0.01em; }
+.sec-sum { font-size: 17px; font-weight: 700; color: var(--muted); flex: none; }
+
+/* Kötelező kiadások (fix, felül) */
+.due-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
+.due-row:first-of-type { border-top: none; }
+.due-main { flex: 1; min-width: 0; }
+.due-when { font-size: 13px; color: var(--muted); }
+.due-when.urgent { color: var(--neg); font-weight: 700; }
+input[type="checkbox"] { width: 24px; height: 24px; min-height: 0; flex: none; accent-color: var(--accent); }
+
+/* Év/hónap választó */
+.month-nav select { flex: 1; min-width: 0; min-height: 44px; padding: 8px 10px; font-weight: 700; font-size: 16px; }
+.month-nav > button { flex: none; }
+
+/* Szín-választó */
+.swatches { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px; }
+.swatch { width: 44px; height: 44px; border-radius: 50%; border: 3px solid var(--line); cursor: pointer; padding: 0; min-height: 0; }
+.swatch.sel { border-color: var(--fg); }

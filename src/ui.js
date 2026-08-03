@@ -1,4 +1,57 @@
-import { monthOverview, categoryTotal, remindersDueInMonth, occurrencesInMonth } from "./model.js";
+import { monthOverview, categoryTotal, remindersDueInMonth, occurrencesInMonth, dueSummaryForMonth } from "./model.js";
+import { ACCENTS } from "./theme.js";
+
+const YEARS = Array.from({ length: 2100 - 2025 + 1 }, (_, i) => 2025 + i);
+const MONTH_SHORT = ["jan.", "feb.", "márc.", "ápr.", "máj.", "jún.", "júl.", "aug.", "szept.", "okt.", "nov.", "dec."];
+
+export function isCollapsed(state, key) { return !!(state.db.settings.collapsed && state.db.settings.collapsed[key]); }
+function chev(open) { return el("span", { class: "chev" }, open ? "▾" : "▸"); }
+
+function fmtDay(dateKey) {
+  const [, m, d] = dateKey.split("-").map(Number);
+  return `${MONTH_SHORT[m - 1]} ${d}.`;
+}
+function dueWhenText(daysUntil) {
+  if (daysUntil < 0) return `${-daysUntil} napja lejárt`;
+  if (daysUntil === 0) return "ma esedékes";
+  if (daysUntil === 1) return "holnap";
+  return `${daysUntil} nap múlva`;
+}
+
+// Év/hónap választó (Kiadások és Áttekintő közösen használja)
+export function renderMonthNav(state, h) {
+  const [y, m] = state.month.split("-").map(Number);
+  const ySel = el("select", { "aria-label": "Év", onchange: e => h.onSetMonth(`${e.target.value}-${String(m).padStart(2, "0")}`) },
+    ...YEARS.map(yy => el("option", { value: yy, ...(yy === y ? { selected: "" } : {}) }, String(yy))));
+  const mSel = el("select", { "aria-label": "Hónap", onchange: e => h.onSetMonth(`${y}-${e.target.value}`) },
+    ...MONTHS.map((name, i) => { const val = String(i + 1).padStart(2, "0"); return el("option", { value: val, ...(i + 1 === m ? { selected: "" } : {}) }, name); }));
+  return el("div", { class: "month-nav" },
+    el("button", { class: "ghost", "aria-label": "Előző hónap", onclick: h.onPrevMonth }, "‹"),
+    ySel, mSel,
+    el("button", { class: "ghost", "aria-label": "Következő hónap", onclick: h.onNextMonth }, "›"));
+}
+
+// Fix, felül megjelenő kötelező kiadások — checkboxszal, esedékességgel, sürgős piros jelöléssel
+export function renderRemindersPinned(state, h) {
+  const due = dueSummaryForMonth(state.db, state.month, todayKey());
+  if (!due.length) return null;
+  const open = !isCollapsed(state, "rem");
+  const unpaid = due.filter(d => !d.paid).length;
+  const card = el("div", { class: "card", style: "border-color:var(--accent)" });
+  card.append(el("button", { class: "collapse-head", onclick: () => h.onToggleCollapse("rem") },
+    el("span", { class: "left" }, chev(open), el("span", { class: "sec-title" }, "Kötelező kiadások")),
+    el("span", { class: "sec-sum" }, unpaid ? `${unpaid} hátra` : "kész")));
+  if (open) {
+    for (const d of due) {
+      const cb = el("input", { type: "checkbox", ...(d.paid ? { checked: "" } : {}), onchange: () => h.onTogglePaid(d.reminder) });
+      card.append(el("div", { class: "due-row" }, cb,
+        el("div", { class: "due-main" },
+          el("div", {}, d.reminder.name + (d.reminder.amount != null && d.reminder.amount !== "" ? ` — ${ft(d.reminder.amount)}` : "")),
+          el("div", { class: "due-when" + (d.urgent ? " urgent" : "") }, `${fmtDay(d.date)} · ${d.paid ? "kifizetve" : dueWhenText(d.daysUntil)}`))));
+    }
+  }
+  return card;
+}
 
 // --- Segédek ---
 
@@ -35,45 +88,34 @@ export function findCategoryIdByName(db, name) {
 
 const FREQ_LABEL = { daily: "napi", weekly: "heti", monthly: "havi" };
 
-// --- Esedékes-banner ---
-
-export function renderDueBanner(state, h) {
-  const due = remindersDueInMonth(state.db, state.month).filter(x => !x.paid);
-  if (!due.length) return null;
-  const card = el("div", { class: "card", style: "border-color:var(--accent)" });
-  card.append(el("div", { class: "cat-head" }, el("strong", {}, "Esedékes kötelező kiadás"), el("span", { class: "muted" }, `${due.length} db`)));
-  card.append(el("div", { class: "muted", style: "margin-top:4px" }, due.map(x => x.reminder.name).join(", ")));
-  card.append(el("button", { class: "ghost", style: "width:100%;margin-top:8px", onclick: () => { state.view = "reminders"; h.rerender(); } }, "Megnézem"));
-  return card;
-}
-
 // --- Hónap nézet ---
 
 export function renderMonthView(state, h) {
   const { db, month } = state;
   const wrap = el("div");
-  const banner = renderDueBanner(state, h); if (banner) wrap.append(banner);
 
-  wrap.append(el("div", { class: "topbar" },
-    el("div", { class: "month-nav" },
-      el("button", { class: "ghost", "aria-label": "Előző hónap", onclick: h.onPrevMonth }, "‹"),
-      el("span", {}, monthLabel(month)),
-      el("button", { class: "ghost", "aria-label": "Következő hónap", onclick: h.onNextMonth }, "›"),
-    ),
-    el("button", { class: "primary", onclick: h.onAddItem }, "Új tétel"),
-  ));
+  const pinned = renderRemindersPinned(state, h); if (pinned) wrap.append(pinned);
+
+  wrap.append(renderMonthNav(state, h));
+  wrap.append(el("button", { class: "primary", onclick: h.onAddItem, style: "width:100%;margin:10px 0 12px" }, "Új tétel"));
 
   const m = db.months[month] || { items: [], transfers: [] };
   for (const c of db.categories.slice().sort((a, b) => a.order - b.order)) {
     const items = m.items.filter(i => i.categoryId === c.id);
+    const key = "cat:" + c.id;
+    const open = !isCollapsed(state, key);
     const card = el("div", { class: "card" });
-    card.append(el("div", { class: "cat-head" }, el("span", {}, c.name), el("span", { class: "cat-sum" }, ft(categoryTotal(db, month, c.id)))));
-    for (const it of items) {
-      card.append(el("div", { class: "item", onclick: () => h.onEditItem(it.id) },
-        el("div", {}, el("div", {}, it.name), el("small", {}, `${it.qty} db · ${it.store || "—"} · ${it.payment === "cash" ? "kp" : "kártya"}`)),
-        el("div", {}, ft(it.price))));
+    card.append(el("button", { class: "collapse-head", onclick: () => h.onToggleCollapse(key) },
+      el("span", { class: "left" }, chev(open), el("span", { class: "sec-title" }, c.name)),
+      el("span", { class: "sec-sum" }, ft(categoryTotal(db, month, c.id)))));
+    if (open) {
+      for (const it of items) {
+        card.append(el("div", { class: "item", onclick: () => h.onEditItem(it.id) },
+          el("div", {}, el("div", {}, it.name), el("small", {}, `${it.qty} db · ${it.store || "—"} · ${it.payment === "cash" ? "kp" : "kártya"}`)),
+          el("div", {}, ft(it.price))));
+      }
+      if (!items.length) card.append(el("div", { class: "item muted" }, "Nincs tétel"));
     }
-    if (!items.length) card.append(el("div", { class: "item muted" }, "Nincs tétel"));
     wrap.append(card);
   }
   const o = monthOverview(db, month);
@@ -159,18 +201,26 @@ export function renderTransfersView(state, h) {
   const { db, month } = state;
   const m = db.months[month] || { items: [], transfers: [] };
   const wrap = el("div", {});
-  wrap.append(el("div", { class: "topbar" }, el("h2", {}, "Utalások"), el("span", { class: "muted" }, monthLabel(month))));
+  wrap.append(el("h2", { style: "margin-bottom:10px" }, "Utalások"));
+  wrap.append(el("div", { style: "margin-bottom:12px" }, renderMonthNav(state, h)));
   for (const [dir, title] of [["in", "Bejövő"], ["out", "Kimenő"]]) {
     const list = m.transfers.filter(t => t.dir === dir);
     const sum = list.reduce((s, t) => s + t.amount, 0);
+    const key = "tr:" + dir;
+    const open = !isCollapsed(state, key);
     const card = el("div", { class: "card" });
-    card.append(el("div", { class: "cat-head" }, el("span", {}, title), el("span", { class: "cat-sum" }, ft(sum))));
-    for (const t of list) {
-      card.append(el("div", { class: "item", onclick: () => h.onEditTransfer(t.id) },
-        el("div", {}, el("div", {}, t.name), el("small", {}, `${t.date || "—"} · ${t.partner || "—"}`)),
-        el("div", { class: dir === "in" ? "pos" : "neg" }, (dir === "in" ? "+" : "−") + ft(t.amount))));
+    card.append(el("button", { class: "collapse-head", onclick: () => h.onToggleCollapse(key) },
+      el("span", { class: "left" }, chev(open), el("span", { class: "sec-title" }, title)),
+      el("span", { class: "sec-sum", style: "color:" + (dir === "in" ? "var(--pos)" : "var(--neg)") }, (dir === "in" ? "+" : "−") + ft(sum))));
+    if (open) {
+      for (const t of list) {
+        card.append(el("div", { class: "item", onclick: () => h.onEditTransfer(t.id) },
+          el("div", {}, el("div", {}, t.name), el("small", {}, `${t.date || "—"} · ${t.partner || "—"}`)),
+          el("div", { class: dir === "in" ? "pos" : "neg" }, (dir === "in" ? "+" : "−") + ft(t.amount))));
+      }
+      if (!list.length) card.append(el("div", { class: "item muted" }, "Nincs tétel"));
+      card.append(el("button", { class: "ghost", style: "width:100%;margin-top:8px", onclick: () => h.onAddTransfer(dir) }, `Új ${title.toLowerCase()}`));
     }
-    card.append(el("button", { class: "ghost", style: "width:100%;margin-top:8px", onclick: () => h.onAddTransfer(dir) }, `Új ${title.toLowerCase()}`));
     wrap.append(card);
   }
   return wrap;
@@ -214,9 +264,9 @@ export function renderTransferForm(state, { transfer, dir, onSave, onDelete, onC
 
 export function renderOverview(state, h) {
   const wrap = el("div", {});
-  const banner = renderDueBanner(state, h); if (banner) wrap.append(banner);
   const o = monthOverview(state.db, state.month);
-  wrap.append(el("div", { class: "topbar" }, el("h2", {}, "Áttekintő"), el("span", { class: "muted" }, monthLabel(state.month))));
+  wrap.append(el("h2", { style: "margin-bottom:10px" }, "Áttekintő"));
+  wrap.append(el("div", { style: "margin-bottom:12px" }, renderMonthNav(state, h)));
   const kpi = el("div", { class: "card" });
   kpi.append(el("div", { class: "cat-head" }, el("span", {}, "Bevétel"), el("span", { class: "pos" }, ft(o.income))));
   kpi.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Kiadás"), el("span", { class: "neg" }, ft(o.totalExpense))));
@@ -237,6 +287,28 @@ export function renderOverview(state, h) {
   pay.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Kártya"), el("span", { class: "muted" }, ft(o.card))));
   pay.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Kimenő utalás"), el("span", { class: "muted" }, ft(o.expenseOut))));
   wrap.append(pay);
+
+  const due = dueSummaryForMonth(state.db, state.month, todayKey());
+  const rem = el("div", { class: "card" });
+  rem.append(el("h3", {}, "Kötelező kiadások"));
+  if (!due.length) {
+    rem.append(el("div", { class: "muted" }, "Nincs esedékes ebben a hónapban."));
+  } else {
+    const withAmount = due.filter(d => d.reminder.amount != null && d.reminder.amount !== "");
+    const total = withAmount.reduce((s, d) => s + Number(d.reminder.amount), 0);
+    const paidTotal = withAmount.filter(d => d.paid).reduce((s, d) => s + Number(d.reminder.amount), 0);
+    rem.append(el("div", { class: "cat-head" }, el("span", {}, "Összesen"), el("span", { class: "muted" }, ft(total))));
+    rem.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Ebből kifizetve"), el("span", { class: "muted" }, ft(paidTotal))));
+    rem.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Hátralévő"), el("span", { style: "color:var(--neg);font-weight:600" }, ft(total - paidTotal))));
+    for (const d of due) {
+      const cb = el("input", { type: "checkbox", ...(d.paid ? { checked: "" } : {}), onchange: () => h.onTogglePaid(d.reminder) });
+      rem.append(el("div", { class: "due-row" }, cb,
+        el("div", { class: "due-main" },
+          el("div", {}, d.reminder.name + (d.reminder.amount != null && d.reminder.amount !== "" ? ` — ${ft(d.reminder.amount)}` : "")),
+          el("div", { class: "due-when" + (d.urgent ? " urgent" : "") }, `${fmtDay(d.date)} · ${d.paid ? "kifizetve" : dueWhenText(d.daysUntil)}`))));
+    }
+  }
+  wrap.append(rem);
   return wrap;
 }
 
@@ -336,6 +408,19 @@ export function renderSettings(state, h) {
   themeCard.append(el("select", { onchange: e => h.onSetTheme(e.target.value) },
     ...[["system", "Rendszer szerint"], ["dark", "Sötét"], ["light", "Világos"]].map(([vv, l]) => el("option", { value: vv, ...(db.settings.theme === vv ? { selected: "" } : {}) }, l))));
   wrap.append(themeCard);
+
+  const accentCard = el("div", { class: "card" });
+  accentCard.append(el("label", {}, "Kiemelő szín"));
+  const sw = el("div", { class: "swatches" });
+  for (const [key, a] of Object.entries(ACCENTS)) {
+    sw.append(el("button", {
+      class: "swatch" + (db.settings.accent === key ? " sel" : ""),
+      style: `background:${a.hex}`, "aria-label": a.label, title: a.label,
+      onclick: () => h.onSetAccent(key),
+    }));
+  }
+  accentCard.append(sw);
+  wrap.append(accentCard);
 
   const notifCard = el("div", { class: "card" });
   notifCard.append(el("div", { class: "cat-head" }, el("span", {}, "Értesítések (esedékes kötelező kiadások)"), el("span", { class: "muted" }, db.settings.notifications ? "Be" : "Ki")));

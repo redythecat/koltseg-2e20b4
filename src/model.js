@@ -15,7 +15,7 @@ export function createDatabase() {
     version: 1,
     categories: DEFAULT_CATEGORIES.map((name, i) => ({ id: genId("cat"), name, order: i })),
     reminders: [],
-    settings: { theme: "system", notifications: false },
+    settings: { theme: "system", notifications: false, accent: "blue", collapsed: {} },
     months: {},
     templates: { items: [], transfers: [] },
   };
@@ -222,4 +222,18 @@ export function remindersDueInMonth(db, monthKey) {
 export function remindersDueOn(db, dateKey) {
   const monthKey = dateKey.slice(0, 7);
   return db.reminders.filter(r => r.active && !isReminderPaid(db, monthKey, r.id) && occurrencesInMonth(r, monthKey).includes(dateKey));
+}
+
+export function daysBetween(fromKey, toKey) {
+  return Math.round((parseDay(toKey).getTime() - parseDay(fromKey).getTime()) / 86400000);
+}
+
+// Az adott hónap esedékes kötelező kiadásai, kijelzéshez: a ma-hoz legközelebbi
+// (lehetőleg soron következő) dátum, a kifizetettség és a sürgősség (<=3 nap, ha nincs fizetve).
+export function dueSummaryForMonth(db, monthKey, todayKey) {
+  return remindersDueInMonth(db, monthKey).map(({ reminder, dates, paid }) => {
+    const date = dates.find(d => d >= todayKey) || dates[dates.length - 1];
+    const daysUntil = daysBetween(todayKey, date);
+    return { reminder, date, paid, daysUntil, urgent: !paid && daysUntil <= 3 };
+  });
 }

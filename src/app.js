@@ -1,5 +1,5 @@
 import { load, save, downloadBackup, readBackupFile } from "./storage.js";
-import { applyTheme, watchSystemTheme } from "./theme.js";
+import { applyTheme, watchSystemTheme, applyAccent } from "./theme.js";
 import {
   addItem, updateItem, moveItem, deleteItem,
   addCategory, renameCategory, deleteCategory,
@@ -28,9 +28,11 @@ const state = {
   editing: null,        // { type: "item"|"transfer"|"reminder", id, dir? }
   importCode: "",
   importPreview: null,
+  navHidden: false,
 };
 
 applyTheme(state.db.settings.theme);
+applyAccent(state.db.settings.accent);
 watchSystemTheme(() => state.db.settings.theme);
 
 function commit() { save(state.db); render(); }
@@ -112,6 +114,9 @@ const handlers = {
   rerender: () => render(),
   onPrevMonth: () => { state.month = shiftMonth(state.month, -1); render(); },
   onNextMonth: () => { state.month = shiftMonth(state.month, 1); render(); },
+  onSetMonth: (key) => { state.month = key; render(); },
+  onToggleCollapse: (key) => { const c = state.db.settings.collapsed; c[key] = !c[key]; if (!c[key]) delete c[key]; commit(); },
+  onSetAccent: (key) => { state.db.settings.accent = key; applyAccent(key); commit(); },
   onAddItem: () => { state.editing = { type: "item", id: null }; render(); },
   onEditItem: (id) => { state.editing = { type: "item", id }; render(); },
   onAddTransfer: (dir) => { state.editing = { type: "transfer", id: null, dir }; render(); },
@@ -153,10 +158,17 @@ const handlers = {
   },
 };
 
-const TABS = [["month", "Hónap"], ["transfers", "Utalások"], ["overview", "Áttekintő"], ["settings", "Beállítások"]];
+const TABS = [["month", "Kiadások"], ["transfers", "Utalások"], ["overview", "Áttekintő"], ["settings", "Beállítások"]];
 function renderTabbar() {
   const bar = document.getElementById("tabbar");
+  if (state.navHidden) {
+    bar.className = "tabbar hidden";
+    bar.replaceChildren(el("button", { class: "nav-handle", "aria-label": "Menü megnyitása", onclick: () => { state.navHidden = false; render(); } }, "▴"));
+    return;
+  }
+  bar.className = "tabbar";
   const inner = el("div", { class: "tabbar-inner" });
+  inner.append(el("button", { class: "nav-toggle", "aria-label": "Menü elrejtése", onclick: () => { state.navHidden = true; render(); } }, "▾"));
   for (const [view, label] of TABS) {
     inner.append(el("button", { class: state.view === view && !state.editing ? "primary" : "", onclick: () => { state.editing = null; state.importPreview = null; state.view = view; render(); } }, label));
   }

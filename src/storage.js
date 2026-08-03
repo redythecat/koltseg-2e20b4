@@ -10,6 +10,8 @@ export function load() {
     if (!db || db.version !== 1 || !Array.isArray(db.categories)) return createDatabase();
     if (!db.reminders) db.reminders = [];
     if (!db.settings) db.settings = { theme: "system", notifications: false };
+    if (!db.settings.accent) db.settings.accent = "blue";
+    if (!db.settings.collapsed) db.settings.collapsed = {};
     return db;
   } catch {
     return createDatabase();
