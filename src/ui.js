@@ -102,7 +102,7 @@ export function renderMonthView(state, h) {
   const q = (state.search || "").trim().toLowerCase();
   wrap.append(el("input", { id: "kiadas-search", value: state.search || "", placeholder: "Keresés (név vagy üzlet)", oninput: e => h.onSearchInput(e.target.value), style: "margin:10px 0 8px" }));
   wrap.append(el("button", { class: "primary", onclick: h.onAddItem, style: "width:100%;margin:0 0 10px" }, "Új tétel"));
-  wrap.append(el("div", { class: "month-total" }, el("span", { class: "muted" }, "Havi kiadás"), el("span", {}, ft(monthOverview(db, month).totalExpense))));
+  wrap.append(el("div", { class: "month-total" }, el("span", { class: "mt-label" }, "Havi kiadás"), el("span", { class: "mt-amount" }, ft(monthOverview(db, month).totalExpense))));
 
   const m = db.months[month] || { items: [], transfers: [] };
   let shownAny = false;
