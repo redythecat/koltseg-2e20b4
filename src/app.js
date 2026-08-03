@@ -208,12 +208,12 @@ function renderTabbar() {
   const bar = document.getElementById("tabbar");
   if (state.navHidden) {
     bar.className = "tabbar hidden";
-    bar.replaceChildren(el("button", { class: "nav-handle", "aria-label": "Menü megnyitása", onclick: () => { state.navHidden = false; render(); } }, "▴"));
+    bar.replaceChildren(el("button", { class: "nav-handle", "aria-label": "Menü megnyitása", onclick: () => { state.navHidden = false; render(); } }, el("span", { class: "chev" }, "▴")));
     return;
   }
   bar.className = "tabbar";
   const inner = el("div", { class: "tabbar-inner" });
-  inner.append(el("button", { class: "nav-toggle", "aria-label": "Menü elrejtése", onclick: () => { state.navHidden = true; render(); } }, "▾"));
+  inner.append(el("button", { class: "nav-toggle", "aria-label": "Menü elrejtése", onclick: () => { state.navHidden = true; render(); } }, el("span", { class: "chev" }, "▾")));
   for (const [view, label] of TABS) {
     inner.append(el("button", { class: state.view === view && !state.editing ? "primary" : "", onclick: () => { state.editing = null; state.importPreview = null; state.view = view; render(); } }, label));
   }

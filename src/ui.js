@@ -299,7 +299,7 @@ export function renderOverview(state, h) {
   const dTxt = (cmp.delta > 0 ? "+" : "") + ft(cmp.delta) + (cmp.deltaPct !== null ? ` (${cmp.deltaPct > 0 ? "+" : ""}${cmp.deltaPct}%)` : "");
   cmpCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Változás"), el("span", { style: `color:${dColor};font-weight:600` }, dTxt)));
   if (cmp.projection != null) {
-    cmpCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Várható havi összeg"), el("span", { class: "muted" }, "~" + ft(cmp.projection))));
+    cmpCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Várható havi kiadás"), el("span", { class: "muted" }, "~" + ft(cmp.projection))));
     cmpCard.append(el("p", { class: "muted", style: "margin:4px 0 0;font-size:13px" }, "Ha ilyen tempóban költesz tovább, kb. ennyi lesz a hónap végére."));
   }
   wrap.append(cmpCard);

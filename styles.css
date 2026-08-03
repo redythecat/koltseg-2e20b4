@@ -41,9 +41,10 @@ button.ghost { background: transparent; }
   background: transparent; border: 1px solid transparent; color: var(--muted); border-radius: 14px; }
 .tabbar button.primary { background: color-mix(in srgb, var(--accent) 16%, transparent);
   color: var(--accent); border-color: transparent; font-weight: 800; }
-.nav-toggle { flex: none !important; width: 48px; color: var(--muted); font-size: 22px; }
+.nav-toggle { flex: none !important; width: 50px; padding: 0; display: flex; align-items: center; justify-content: center; }
 .tabbar.hidden { background: transparent; border-top: none; padding: 8px; pointer-events: none; }
-.tabbar .nav-handle { pointer-events: auto; flex: none; width: 64px; min-height: 48px; font-size: 22px; background: var(--card); border: 1px solid var(--line); opacity: 0.95; }
+.tabbar .nav-handle { pointer-events: auto; flex: none; width: 58px; min-height: 48px; padding: 0;
+  background: transparent; border: none; display: flex; align-items: center; justify-content: center; }
 input, select, textarea { font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line);
   border-radius: 10px; padding: 12px; width: 100%; min-height: 48px; }
 label { display: block; color: var(--muted); font-size: 13px; margin: 8px 0 4px; }
