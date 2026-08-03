@@ -17,14 +17,20 @@ lefényképezi, és a tételek a megfelelő kategóriába kerülnek.
   appban; az eredmény egy **import-kód**, amit az appba beilleszt.
 - **Claude-függetlenség:** az app minden funkciója Claude nélkül is működik; csak az AI-s
   blokk-beolvasás igényel Claude-fiókot (bármelyiket). Így a párja is használhatja előfiz nélkül.
+- **UI:** nagyon átlátható, könnyen kezelhető, nagy célfelületek, kevés kattintás.
+- **Téma:** sötét / világos / rendszer szerinti, kapcsolható a beállításokban.
 
 ## Adatmodell
 
 ```
-Hónap (pl. "2026-08")
- └─ Kategória (felhasználó által szerkeszthető: Élelmiszer, Alkohol/üdítő,
-    Tisztítószer, Macska, Luxus)
-     └─ Tétel
+Globális
+ ├─ Kategóriák (Élelmiszer, Alkohol/üdítő, Tisztítószer, Macska, Luxus — szerkeszthető)
+ ├─ Emlékeztetők (ismétlődő kötelező kiadások: név, esedékesség napja, opc. összeg)
+ ├─ Beállítások (téma: sötét/világos/rendszer; értesítések be/ki)
+ └─ Hónapok (pl. "2026-08")
+     ├─ Tételek (kategóriánként)
+     ├─ Utalások (bejövő/kimenő)
+     └─ Kifizetett emlékeztetők (mely kötelező kiadás van kipipálva ebben a hónapban)
 ```
 
 **Tétel mezői:**
@@ -44,6 +50,30 @@ Hónap (pl. "2026-08")
 **Kategória:**
 - `név`, sorrend. Átnevezhető, hozzáadható, törölhető.
 - Törléskor rákérdez: a benne lévő tételek mozgatása másik kategóriába, vagy törlése.
+
+**Emlékeztető / kötelező kiadás (globális, ismétlődő — nem hónaphoz kötött):**
+- `név` (pl. „Törlesztő", „TB", „Hitel")
+- `összeg` (opcionális — árral vagy anélkül is lehet)
+- `megjegyzés` (opcionális)
+- `aktív` (be/ki)
+- **Ismétlődés:** `freq` = napi / heti / havi, `interval` (alap 1, pl. „2 hetente"),
+  `kezdő dátum`, opcionális `lejárati dátum`.
+- `értesítés ideje` (opcionális, alap 9:00 — a naptár-riasztáshoz).
+- Havi „kifizetve" állapot: a `hónap` tárolja, mely emlékeztetők vannak kipipálva
+  (`paidReminders: [reminderId]`). „Kifizetve"-re jelöléskor opcionálisan létrehoz egy
+  **kimenő utalást** az összeggel.
+- **„Naptárba" gomb:** az app `.ics` naptár-fájlt készít (ismétlődés = RRULE, lejárat = UNTIL,
+  riasztás = VALARM), amit a telefon az alapértelmezett naptárába tesz — begépelés nélkül,
+  a naptár egyszeri „hozzáad" megerősítésével. A natív riasztás zárt appnál is szól.
+
+**Utalás (banki tétel — a hónapon belül, a kiadás-kategóriáktól külön):**
+- `irány` (bejövő / kimenő)
+- `megnevezés` (pl. „Fizetés", „Albérlet", „Visszatérítés")
+- `összeg` (HUF)
+- `dátum`
+- `partner` (kitől / kinek — opcionális)
+- `megjegyzés` (opcionális)
+- A visszatérő utalások itt is **megjegyzett sablonként** gyorslistáról hozzáadhatók.
 
 ## Fő nézetek / UI
 
@@ -66,7 +96,45 @@ Hónap (pl. "2026-08")
 ### 4. Kategóriák kezelése
 - Átnevezés / új / törlés (törléskor a tételek sorsáról rákérdez).
 
-### 5. Mentés & biztonság
+### 5. Utalások nézet
+- Két lista a hónapon belül: **Bejövő** és **Kimenő**.
+- Tétel: megnevezés, összeg, dátum, partner, megjegyzés — hozzáadás/szerkesztés/törlés.
+- Visszatérő utalások gyorslistából (megjegyzett sablonok) egy koppintással.
+- Alul: bejövő összeg, kimenő összeg.
+
+### 6. Áttekintő / kimutató nézet (havi)
+- **Bevétel** = bejövő utalások összege.
+- **Kiadás** = kiadás-kategóriák összege (bolti költések) + kimenő utalások összege.
+- **Egyenleg** = Bevétel − Kiadás (mennyi maradt / mínusz).
+- Kiadások **kategóriánkénti** bontása (összeg + arány, egyszerű sávokkal).
+- **Készpénz vs kártya** bontás a bolti kiadásoknál.
+- Minden szám az aktuális hónapra. (Külső grafikon-könyvtár nélkül, egyszerű SVG sávok.)
+
+### 7. Kötelező kiadások / emlékeztetők nézet
+- Emlékeztetők listája: hozzáadás / szerkesztés / törlés (név, esedékesség napja, opcionális összeg).
+- Az aktuális hónapra: melyik esedékes, mi van már **kifizetve**; „Kifizetve" gombbal jelölhető
+  (opcionálisan kimenő utalást hoz létre az összeggel).
+- Az áttekintőn is látszik: mennyi kötelező kiadás van még hátra ebben a hónapban.
+
+### 8. Beállítások menü
+- **Téma:** sötét / világos / rendszer szerinti.
+- **Értesítések:** be/ki (esedékes kötelező kiadásokra — a korlátokat lásd lent).
+- **Export** (CSV, hónapra/mindenre), **Backup mentése / visszatöltése**.
+- **Kategóriák kezelése**, **Emlékeztetők kezelése**, **Blokk import** elérése.
+
+### 9. Értesítések (esedékes kötelező kiadások) — és a korlát
+- **Alap (ingyen, szerver nélkül):** amikor megnyitod az appot, kiemelt figyelmeztetés a
+  ma/az e-havi esedékes, még ki nem fizetett kötelező kiadásokról. Ha engedélyezed az
+  értesítéseket, az app **nyitáskor/használatkor** helyi értesítést is kitesz a ma esedékesekről.
+- **Naptár-opció (ingyen, megbízható):** egy „Naptárba" gombbal az emlékeztető bekerül a telefon
+  saját (ismétlődő) naptáreseményeként, és a teló **natívan** szól akkor is, ha az app zárva.
+- **Korlát:** a valódi, garantált **háttér-push** (a teló akkor is szól, ha az app hetek óta
+  zárva) egy PWA-ban csak **push-szerverrel** megbízható — ez extra beállítás és nem fér a
+  „nincs szerver, ingyen" keretbe. Ezt később, külön lehet hozzátenni, ha kell.
+- **Döntés:** app-on belüli figyelmeztetés + helyi értesítés (nyitáskor) + „Naptárba" (.ics)
+  a natív, zárt-appnál is szóló riasztáshoz. Háttér-push most nincs.
+
+### 10. Mentés & biztonság
 - **Export**: Excel (`.xlsx` vagy CSV) — egy hónapra vagy az összesre. Megnyitható Excelben.
 - **Backup mentése / visszatöltése**: egyetlen fájlba (JSON) kiment mindent, és visszatölt —
   telócsere vagy tárhely-törlődés esetére. Ez a biztonsági háló, mert az adat a telón él.
@@ -97,7 +165,8 @@ Hónap (pl. "2026-08")
 
 - Teló↔Mac vagy két felhasználó közti **szinkron / közös kassza**.
 - Felhő, fiók, bejelentkezés.
-- Grafikonok, statisztikák a havi/kategória-összegen túl (később hozzáadható, ha kell).
+- Bonyolult grafikonok / külső chart-könyvtár (az áttekintő egyszerű SVG sávokkal megy).
+- Több hónapot átfogó trend-elemzés (később hozzáadható, ha kell).
 - Automatikus, közvetlen írás az appba a Claude-ból (nincs hozzá csatlakozó; az import-kód
   az áthidalás).
 
