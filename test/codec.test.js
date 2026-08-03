@@ -20,6 +20,13 @@ test("decode fills defaults for qty and payment", () => {
   assert.equal(back.items[0].store, "");
 });
 
+test("decode accepts plain JSON too", () => {
+  const back = decodeImport(JSON.stringify({ month: "2026-08", items: [{ name: "Alma", price: 300, category: "Élelmiszer" }] }));
+  assert.equal(back.month, "2026-08");
+  assert.equal(back.items[0].name, "Alma");
+  assert.equal(back.items[0].qty, 1);
+});
+
 test("decode throws on garbage", () => {
   assert.throws(() => decodeImport("nem-valós-kód!!!"));
 });

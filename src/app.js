@@ -211,12 +211,13 @@ function render() {
   renderTabbar();
 }
 
-// Hash-import induláskor: #import=<kód>
-(function handleHashImport() {
-  const m = location.hash.match(/^#import=(.+)$/);
-  if (m) {
-    const code = decodeURIComponent(m[1]);
-    history.replaceState(null, "", location.pathname + location.search);
+// Import induláskor linkből: ?import=<kód> vagy #import=<kód>
+(function handleImportFromUrl() {
+  const q = new URLSearchParams(location.search).get("import");
+  const hm = location.hash.match(/^#import=(.+)$/);
+  const code = q || (hm ? decodeURIComponent(hm[1]) : null);
+  if (code) {
+    history.replaceState(null, "", location.pathname);
     state.view = "import"; state.importCode = code;
     decodeToPreview(code);
     return;
@@ -232,4 +233,12 @@ function render() {
   for (const r of due) new Notification("Ma esedékes", { body: r.name + (r.amount != null && r.amount !== "" ? ` – ${r.amount} Ft` : ""), tag: "koltseg-" + r.id });
 })();
 
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (refreshing) return;
+    refreshing = true;
+    location.reload();
+  });
+}

@@ -16,11 +16,18 @@ export function encodeImport(payload) {
 }
 
 export function decodeImport(code) {
+  const raw = String(code).trim();
   let obj;
   try {
-    obj = JSON.parse(fromB64(String(code).trim()));
+    // 1) base64-elt JSON (kompakt link/kód)
+    obj = JSON.parse(fromB64(raw));
   } catch {
-    throw new Error("Érvénytelen import-kód (nem visszafejthető).");
+    try {
+      // 2) sima JSON is mehet (bemásolva)
+      obj = JSON.parse(raw);
+    } catch {
+      throw new Error("Érvénytelen import (se kód, se JSON).");
+    }
   }
   if (!obj || typeof obj !== "object" || typeof obj.month !== "string" || !Array.isArray(obj.items)) {
     throw new Error("Érvénytelen import-kód (hiányzó month vagy items).");
