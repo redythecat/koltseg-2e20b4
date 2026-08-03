@@ -2,8 +2,10 @@
 
 Személyes költségkövető (telóra). Az adatok a telefonodon tárolódnak, nincs fiók, ingyen.
 
+**Élő link:** https://redythecat.github.io/koltseg-2e20b4/
+
 ## Telepítés a telóra
-1. Nyisd meg a kapott linket a telefon böngészőjében.
+1. Nyisd meg a linket (https://redythecat.github.io/koltseg-2e20b4/) a telefon böngészőjében.
 2. Menü → „Hozzáadás a kezdőképernyőhöz".
 3. Ezután a kezdőképernyőről indul, offline is megy.
 
