@@ -253,8 +253,7 @@ export function monthComparison(db, monthKey, todayK) {
   if (todayK && todayK.slice(0, 7) === monthKey) {
     const day = Number(todayK.slice(8, 10));
     const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
-    // Csak a hónap 5. napjától becslünk — előtte túl kevés az adat, félrevinne.
-    if (day >= 5) projection = Math.round(cur * (daysInMonth / day));
+    if (day > 0) projection = Math.round(cur * (daysInMonth / day));
   }
   return { current: cur, prev, delta, deltaPct, projection };
 }

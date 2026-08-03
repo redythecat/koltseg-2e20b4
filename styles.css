@@ -59,7 +59,7 @@ label { display: block; color: var(--muted); font-size: 13px; margin: 8px 0 4px;
 .collapse-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
   background: transparent; border: none; padding: 6px 0; min-height: 56px; text-align: left; }
 .collapse-head .left { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.chev { color: var(--accent); font-size: 15px; flex: none; width: 32px; height: 32px; line-height: 32px;
+.chev { color: var(--accent); font-size: 21px; flex: none; width: 36px; height: 36px; line-height: 36px;
   text-align: center; border-radius: 50%; background: color-mix(in srgb, var(--accent) 16%, transparent); }
 .sec-title { font-size: 19px; font-weight: 800; letter-spacing: -0.01em; }
 .sec-sum { font-size: 17px; font-weight: 700; color: var(--muted); flex: none; }

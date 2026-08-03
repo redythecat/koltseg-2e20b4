@@ -1,6 +1,12 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.1", date: "2026-08-03", notes: [
+      "A várható havi összeg mindig látszik (a hónap elején is), rövid magyarázattal.",
+      "Még nagyobb, jól látható összecsukó nyíl-ikonok.",
+    ],
+  },
+  {
     v: "2.0", date: "2026-08-03", notes: [
       "Csinosítás: kiemeltebb havi kiadás (színes háttérrel), látványosabb összecsukó nyilak, letisztultabb alsó menü.",
     ],
