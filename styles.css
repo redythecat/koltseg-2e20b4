@@ -26,13 +26,17 @@ button.ghost { background: transparent; }
 .item:first-of-type { border-top: none; }
 .item small { color: var(--muted); }
 .total { font-size: 20px; font-weight: 700; text-align: right; margin-top: 8px; }
+.month-total { display: flex; justify-content: space-between; align-items: center;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 12px 16px; margin-bottom: 12px; font-size: 19px; font-weight: 800; }
+.month-total .muted { font-weight: 600; font-size: 15px; }
 .tabbar { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 6px; padding: 8px;
   background: var(--card); border-top: 1px solid var(--line); }
 .tabbar-inner { display: flex; gap: 6px; width: 100%; max-width: 640px; margin: 0 auto; }
-.tabbar button { flex: 1; min-height: 52px; padding: 8px 4px; font-size: 14px; }
-.nav-toggle { flex: none !important; width: 44px; color: var(--muted); }
+.tabbar button { flex: 1; min-height: 60px; padding: 8px 4px; font-size: 15px; }
+.nav-toggle { flex: none !important; width: 50px; color: var(--muted); font-size: 22px; }
 .tabbar.hidden { background: transparent; border-top: none; padding: 8px; pointer-events: none; }
-.tabbar .nav-handle { pointer-events: auto; flex: none; width: 56px; min-height: 40px; background: var(--card); border: 1px solid var(--line); opacity: 0.95; }
+.tabbar .nav-handle { pointer-events: auto; flex: none; width: 64px; min-height: 48px; font-size: 22px; background: var(--card); border: 1px solid var(--line); opacity: 0.95; }
 input, select, textarea { font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line);
   border-radius: 10px; padding: 12px; width: 100%; min-height: 48px; }
 label { display: block; color: var(--muted); font-size: 13px; margin: 8px 0 4px; }
@@ -46,9 +50,9 @@ label { display: block; color: var(--muted); font-size: 13px; margin: 8px 0 4px;
 
 /* Összecsukható fejlécek + hangsúlyos címek */
 .collapse-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
-  background: transparent; border: none; padding: 4px 0; min-height: 44px; text-align: left; }
-.collapse-head .left { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.chev { color: var(--muted); font-size: 13px; width: 14px; flex: none; }
+  background: transparent; border: none; padding: 6px 0; min-height: 56px; text-align: left; }
+.collapse-head .left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.chev { color: var(--accent); font-size: 22px; width: 24px; flex: none; text-align: center; }
 .sec-title { font-size: 19px; font-weight: 800; letter-spacing: -0.01em; }
 .sec-sum { font-size: 17px; font-weight: 700; color: var(--muted); flex: none; }
 

@@ -1,6 +1,13 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "1.9", date: "2026-08-03", notes: [
+      "Nagyobb, jobban látható összecsukó nyilak és alsó menügombok — könnyebb megnyomni.",
+      "A havi kiadás összege felülre került, mindig szem előtt van.",
+      "Áttekintő: érthetőbb „Várható havi összeg” magyarázattal (csak a hónap 5. napjától).",
+    ],
+  },
+  {
     v: "1.8", date: "2026-08-03", notes: [
       "Havi keret kategóriánként: a Kiadásoknál sáv mutatja, hol tartasz, és pirosra vált túllépéskor.",
       "Áttekintőn: az előző hónaphoz képesti változás és hó végi becslés.",

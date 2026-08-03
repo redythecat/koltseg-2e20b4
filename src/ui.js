@@ -101,7 +101,8 @@ export function renderMonthView(state, h) {
 
   const q = (state.search || "").trim().toLowerCase();
   wrap.append(el("input", { id: "kiadas-search", value: state.search || "", placeholder: "Keresés (név vagy üzlet)", oninput: e => h.onSearchInput(e.target.value), style: "margin:10px 0 8px" }));
-  wrap.append(el("button", { class: "primary", onclick: h.onAddItem, style: "width:100%;margin:0 0 12px" }, "Új tétel"));
+  wrap.append(el("button", { class: "primary", onclick: h.onAddItem, style: "width:100%;margin:0 0 10px" }, "Új tétel"));
+  wrap.append(el("div", { class: "month-total" }, el("span", { class: "muted" }, "Havi kiadás"), el("span", {}, ft(monthOverview(db, month).totalExpense))));
 
   const m = db.months[month] || { items: [], transfers: [] };
   let shownAny = false;
@@ -133,8 +134,6 @@ export function renderMonthView(state, h) {
     wrap.append(card);
   }
   if (q && !shownAny) wrap.append(el("div", { class: "card muted" }, "Nincs találat."));
-  const o = monthOverview(db, month);
-  wrap.append(el("div", { class: "total" }, `Havi kiadás: ${ft(o.totalExpense)}`));
   return wrap;
 }
 
@@ -299,7 +298,10 @@ export function renderOverview(state, h) {
   const dColor = cmp.delta > 0 ? "var(--neg)" : (cmp.delta < 0 ? "var(--pos)" : "var(--muted)");
   const dTxt = (cmp.delta > 0 ? "+" : "") + ft(cmp.delta) + (cmp.deltaPct !== null ? ` (${cmp.deltaPct > 0 ? "+" : ""}${cmp.deltaPct}%)` : "");
   cmpCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Változás"), el("span", { style: `color:${dColor};font-weight:600` }, dTxt)));
-  if (cmp.projection != null) cmpCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Becsült hó vége"), el("span", { class: "muted" }, "~" + ft(cmp.projection))));
+  if (cmp.projection != null) {
+    cmpCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Várható havi összeg"), el("span", { class: "muted" }, "~" + ft(cmp.projection))));
+    cmpCard.append(el("p", { class: "muted", style: "margin:4px 0 0;font-size:13px" }, "Ha ilyen tempóban költesz tovább, kb. ennyi lesz a hónap végére."));
+  }
   wrap.append(cmpCard);
 
   const cats = el("div", { class: "card" });
