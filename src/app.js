@@ -9,6 +9,7 @@ import {
 import { decodeImport } from "./codec.js";
 import { expensesCsv, transfersCsv } from "./csv.js";
 import { reminderToIcs } from "./ics.js";
+import { toast, confirmModal, choiceModal } from "./dialog.js";
 import {
   el, shiftMonth, findCategoryIdByName,
   renderMonthView, renderItemForm, renderCategoryManager,
@@ -76,18 +77,14 @@ function saveTransfer(f) {
 function removeTransfer(id) { deleteTransfer(state.db, state.month, id); state.editing = null; commit(); }
 
 // --- Kategória ---
-function onDeleteCategory(c) {
-  if (state.db.categories.length <= 1) { alert("Legalább egy kategória kell."); return; }
+async function onDeleteCategory(c) {
+  if (state.db.categories.length <= 1) { toast("Legalább egy kategória kell."); return; }
   const others = state.db.categories.filter(x => x.id !== c.id);
-  const list = others.map((x, i) => `${i + 1}. ${x.name}`).join("\n");
-  const ans = prompt(`"${c.name}" törlése. Hova soroljam át a tételeit?\n${list}\n\nAdj meg egy sorszámot, vagy írd: torol`, "1");
-  if (ans === null) return;
-  if (ans.trim().toLowerCase() === "torol") deleteCategory(state.db, c.id, null);
-  else {
-    const idx = Number(ans) - 1;
-    if (!others[idx]) { alert("Érvénytelen választás."); return; }
-    deleteCategory(state.db, c.id, others[idx].id);
-  }
+  const options = others.map(x => ({ label: `Áthelyezés ide: ${x.name}`, value: x.id }));
+  options.push({ label: "Tételek törlése is", value: "__delete__", danger: true });
+  const choice = await choiceModal(`"${c.name}" törlése. Mi legyen a benne lévő tételekkel?`, options);
+  if (choice === null) return;
+  deleteCategory(state.db, c.id, choice === "__delete__" ? null : choice);
   commit();
 }
 
@@ -108,7 +105,7 @@ function extractPayload(input) {
 }
 function decodeToPreview(code) {
   let payload;
-  try { payload = decodeImport(extractPayload(code)); } catch (e) { alert(e.message); return; }
+  try { payload = decodeImport(extractPayload(code)); } catch (e) { toast(e.message); return; }
   const month = payload.month || state.month;
   const rows = payload.items.map(it => ({
     name: it.name, qty: it.qty, price: it.price, store: it.store, date: it.date || month + "-01", payment: it.payment,
@@ -121,7 +118,7 @@ function confirmImport() {
   const { month, rows } = state.importPreview;
   for (const r of rows) addItem(state.db, month, { name: r.name, qty: r.qty, price: r.price, store: r.store, date: r.date, payment: r.payment, categoryId: r.categoryId });
   state.importPreview = null; state.view = "month"; state.month = month; commit();
-  alert(`${rows.length} tétel hozzáadva.`);
+  toast(`${rows.length} tétel hozzáadva.`);
 }
 
 const handlers = {
@@ -139,27 +136,31 @@ const handlers = {
   onOpenReminders: () => { state.view = "reminders"; render(); },
   onAddReminder: () => { state.editing = { type: "reminder", id: null }; render(); },
   onEditReminder: (id) => { state.editing = { type: "reminder", id }; render(); },
-  onTogglePaid: (r) => {
+  onTogglePaid: async (r) => {
     const wasPaid = (state.db.months[state.month]?.paidReminders || []).includes(r.id);
     toggleReminderPaid(state.db, state.month, r.id);
-    if (!wasPaid && r.amount != null && r.amount !== "" && confirm(`Rögzítsem "${r.name}" (${r.amount} Ft) kimenő utalásként is?`)) {
-      addTransfer(state.db, state.month, { dir: "out", name: r.name, amount: Number(r.amount), date: state.month + "-" + String(new Date().getDate()).padStart(2, "0"), partner: "", note: "kötelező kiadás" });
-    }
     commit();
+    if (!wasPaid && r.amount != null && r.amount !== "") {
+      const yes = await confirmModal(`Rögzítsem "${r.name}" (${new Intl.NumberFormat("hu-HU").format(r.amount)} Ft) kimenő utalásként is?`, { okText: "Igen, rögzítsd", cancelText: "Nem" });
+      if (yes) {
+        addTransfer(state.db, state.month, { dir: "out", name: r.name, amount: Number(r.amount), date: state.month + "-" + String(new Date().getDate()).padStart(2, "0"), partner: "", note: "kötelező kiadás" });
+        commit();
+      }
+    }
   },
   onAddToCalendar: (r) => downloadText(`${r.name}.ics`, reminderToIcs(r), "text/calendar;charset=utf-8"),
   onOpenImport: (code) => { state.view = "import"; state.importCode = code || ""; state.importPreview = null; render(); },
   onOpenImportView: () => handlers.onOpenImport(""),
   onCopyImportPrompt: async () => {
-    try { await navigator.clipboard.writeText(IMPORT_PROMPT); alert("Kimásolva! Nyisd meg a Claude appot, illeszd be, és csatold a blokk fotóját. A választ (JSON) másold vissza ide a beolvasó mezőbe."); }
-    catch { alert("Nem sikerült a másolás. Jelöld ki és másold ki kézzel a szöveget."); }
+    try { await navigator.clipboard.writeText(IMPORT_PROMPT); toast("Kimásolva! Illeszd be a Claude appba a blokk fotójával."); }
+    catch { toast("Nem sikerült a másolás. Másold ki kézzel a szöveget."); }
   },
   onSetTheme: (t) => { state.db.settings.theme = t; applyTheme(t); commit(); },
   onToggleNotifications: async () => {
     if (!state.db.settings.notifications) {
-      if (!("Notification" in window)) { alert("Ez az eszköz nem támogatja az értesítéseket."); return; }
+      if (!("Notification" in window)) { toast("Ez az eszköz nem támogatja az értesítéseket."); return; }
       const perm = await Notification.requestPermission();
-      if (perm !== "granted") { alert("Az értesítés engedélyezése elmaradt."); return; }
+      if (perm !== "granted") { toast("Az értesítés engedélyezése elmaradt."); return; }
       state.db.settings.notifications = true;
     } else {
       state.db.settings.notifications = false;
@@ -171,7 +172,7 @@ const handlers = {
   onBackup: () => downloadBackup(state.db),
   onRestore: () => {
     const inp = document.createElement("input"); inp.type = "file"; inp.accept = "application/json";
-    inp.onchange = async () => { try { state.db = await readBackupFile(inp.files[0]); applyTheme(state.db.settings.theme); commit(); alert("Backup visszatöltve."); } catch (e) { alert(e.message); } };
+    inp.onchange = async () => { try { state.db = await readBackupFile(inp.files[0]); applyTheme(state.db.settings.theme); applyAccent(state.db.settings.accent); commit(); toast("Backup visszatöltve."); } catch (e) { toast(e.message); } };
     inp.click();
   },
 };

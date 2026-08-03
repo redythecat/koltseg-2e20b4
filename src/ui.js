@@ -1,5 +1,6 @@
 import { monthOverview, categoryTotal, remindersDueInMonth, occurrencesInMonth, dueSummaryForMonth } from "./model.js";
 import { ACCENTS } from "./theme.js";
+import { toast } from "./dialog.js";
 
 const YEARS = Array.from({ length: 2100 - 2025 + 1 }, (_, i) => 2025 + i);
 const MONTH_SHORT = ["jan.", "feb.", "márc.", "ápr.", "máj.", "jún.", "júl.", "aug.", "szept.", "okt.", "nov.", "dec."];
@@ -166,7 +167,7 @@ export function renderItemForm(state, { item, onSave, onDelete, onCancel }) {
   wrap.append(el("label", {}, "Kategória"), selCat);
 
   const actions = el("div", { class: "row", style: "margin-top:12px" });
-  actions.append(el("button", { class: "primary", onclick: () => { if (!f.name || !(f.price >= 0)) { alert("Név és ár kötelező."); return; } onSave(f); } }, "Mentés"));
+  actions.append(el("button", { class: "primary", onclick: () => { if (!f.name || !(f.price >= 0)) { toast("Név és ár kötelező."); return; } onSave(f); } }, "Mentés"));
   actions.append(el("button", { class: "ghost", onclick: onCancel }, "Mégse"));
   wrap.append(actions);
   if (item && onDelete) wrap.append(el("button", { class: "ghost", style: "color:var(--neg);width:100%;margin-top:8px", onclick: () => onDelete(item.id) }, "Törlés"));
@@ -253,7 +254,7 @@ export function renderTransferForm(state, { transfer, dir, onSave, onDelete, onC
   wrap.append(el("label", {}, f.dir === "in" ? "Kitől" : "Kinek"), inPartner);
   wrap.append(el("label", {}, "Megjegyzés"), inNote);
   const actions = el("div", { class: "row", style: "margin-top:12px" });
-  actions.append(el("button", { class: "primary", onclick: () => { if (!f.name || !(f.amount >= 0)) { alert("Megnevezés és összeg kötelező."); return; } onSave(f); } }, "Mentés"));
+  actions.append(el("button", { class: "primary", onclick: () => { if (!f.name || !(f.amount >= 0)) { toast("Megnevezés és összeg kötelező."); return; } onSave(f); } }, "Mentés"));
   actions.append(el("button", { class: "ghost", onclick: onCancel }, "Mégse"));
   wrap.append(actions);
   if (transfer && onDelete) wrap.append(el("button", { class: "ghost", style: "color:var(--neg);width:100%;margin-top:8px", onclick: () => onDelete(transfer.id) }, "Törlés"));
@@ -372,7 +373,7 @@ export function renderReminderForm(state, { reminder, onSave, onDelete, onCancel
   wrap.append(el("label", {}, "Értesítés ideje"), inTime);
 
   const actions = el("div", { class: "row", style: "margin-top:12px" });
-  actions.append(el("button", { class: "primary", onclick: () => { if (!f.name) { alert("Név kötelező."); return; } onSave(f); } }, "Mentés"));
+  actions.append(el("button", { class: "primary", onclick: () => { if (!f.name) { toast("Név kötelező."); return; } onSave(f); } }, "Mentés"));
   actions.append(el("button", { class: "ghost", onclick: onCancel }, "Mégse"));
   wrap.append(actions);
   if (reminder && onDelete) wrap.append(el("button", { class: "ghost", style: "color:var(--neg);width:100%;margin-top:8px", onclick: () => onDelete(reminder.id) }, "Törlés"));

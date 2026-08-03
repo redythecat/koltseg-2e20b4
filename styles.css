@@ -64,6 +64,21 @@ input[type="checkbox"] { width: 24px; height: 24px; min-height: 0; flex: none; a
 .month-nav select { flex: 1; min-width: 0; min-height: 44px; padding: 8px 10px; font-weight: 700; font-size: 16px; }
 .month-nav > button { flex: none; }
 
+/* Megerősítő ablakok + toast */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex;
+  align-items: center; justify-content: center; padding: 20px; z-index: 100; }
+.modal { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 18px; width: 100%; max-width: 420px; box-shadow: 0 12px 40px rgba(0,0,0,0.4); }
+.modal-msg { margin: 0 0 16px; font-size: 16px; line-height: 1.45; white-space: pre-line; }
+.modal-actions { display: flex; gap: 8px; }
+.modal-actions button { flex: 1; }
+button.danger { background: var(--neg); border-color: var(--neg); color: #fff; font-weight: 600; }
+.toast { position: fixed; left: 50%; bottom: 96px; transform: translate(-50%, 20px);
+  background: var(--fg); color: var(--bg); padding: 12px 18px; border-radius: 12px; max-width: 90%;
+  text-align: center; font-weight: 600; opacity: 0; transition: opacity .25s, transform .25s; z-index: 120;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.4); }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
 /* Szín-választó */
 .swatches { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px; }
 .swatch { width: 44px; height: 44px; border-radius: 50%; border: 3px solid var(--line); cursor: pointer; padding: 0; min-height: 0; }
