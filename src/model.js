@@ -1,0 +1,225 @@
+export const DEFAULT_CATEGORIES = [
+  "Élelmiszer",
+  "Alkohol/üdítő",
+  "Tisztítószer",
+  "Macska",
+  "Luxus",
+];
+
+export function genId(prefix) {
+  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
+export function createDatabase() {
+  return {
+    version: 1,
+    categories: DEFAULT_CATEGORIES.map((name, i) => ({ id: genId("cat"), name, order: i })),
+    reminders: [],
+    settings: { theme: "system", notifications: false },
+    months: {},
+    templates: { items: [], transfers: [] },
+  };
+}
+
+export function ensureMonth(db, monthKey) {
+  if (!db.months[monthKey]) db.months[monthKey] = { items: [], transfers: [], paidReminders: [] };
+  else if (!db.months[monthKey].paidReminders) db.months[monthKey].paidReminders = [];
+  return db;
+}
+
+// --- Tétel-CRUD ---
+
+function upsertItemTemplate(db, item) {
+  let t = db.templates.items.find(x => x.name === item.name && x.categoryId === item.categoryId);
+  if (!t) {
+    t = { name: item.name, store: item.store, categoryId: item.categoryId, lastPrice: item.price, lastQty: item.qty, payment: item.payment };
+    db.templates.items.push(t);
+  } else {
+    t.store = item.store;
+    t.lastPrice = item.price;
+    t.lastQty = item.qty;
+    t.payment = item.payment;
+  }
+}
+
+export function addItem(db, monthKey, item) {
+  ensureMonth(db, monthKey);
+  const created = { id: item.id || genId("item"), ...item };
+  db.months[monthKey].items.push(created);
+  upsertItemTemplate(db, created);
+  return created;
+}
+
+export function updateItem(db, monthKey, itemId, patch) {
+  const it = db.months[monthKey].items.find(x => x.id === itemId);
+  if (it) Object.assign(it, patch);
+  return db;
+}
+
+export function moveItem(db, monthKey, itemId, newCategoryId) {
+  return updateItem(db, monthKey, itemId, { categoryId: newCategoryId });
+}
+
+export function deleteItem(db, monthKey, itemId) {
+  const m = db.months[monthKey];
+  m.items = m.items.filter(x => x.id !== itemId);
+  return db;
+}
+
+// --- Kategória-CRUD ---
+
+export function addCategory(db, name) {
+  const order = db.categories.length ? Math.max(...db.categories.map(c => c.order)) + 1 : 0;
+  const c = { id: genId("cat"), name, order };
+  db.categories.push(c);
+  return c;
+}
+
+export function renameCategory(db, categoryId, name) {
+  const c = db.categories.find(x => x.id === categoryId);
+  if (c) c.name = name;
+  return db;
+}
+
+export function deleteCategory(db, categoryId, reassignToId) {
+  for (const key of Object.keys(db.months)) {
+    const m = db.months[key];
+    if (reassignToId) {
+      for (const it of m.items) if (it.categoryId === categoryId) it.categoryId = reassignToId;
+    } else {
+      m.items = m.items.filter(it => it.categoryId !== categoryId);
+    }
+  }
+  db.templates.items = db.templates.items.filter(t => t.categoryId !== categoryId);
+  db.categories = db.categories.filter(c => c.id !== categoryId);
+  return db;
+}
+
+// --- Utalás-CRUD ---
+
+function upsertTransferTemplate(db, t) {
+  let tpl = db.templates.transfers.find(x => x.dir === t.dir && x.name === t.name);
+  if (!tpl) db.templates.transfers.push({ dir: t.dir, name: t.name, partner: t.partner, lastAmount: t.amount });
+  else { tpl.partner = t.partner; tpl.lastAmount = t.amount; }
+}
+
+export function addTransfer(db, monthKey, t) {
+  ensureMonth(db, monthKey);
+  const created = { id: t.id || genId("tr"), ...t };
+  db.months[monthKey].transfers.push(created);
+  upsertTransferTemplate(db, created);
+  return created;
+}
+
+export function updateTransfer(db, monthKey, transferId, patch) {
+  const t = db.months[monthKey].transfers.find(x => x.id === transferId);
+  if (t) Object.assign(t, patch);
+  return db;
+}
+
+export function deleteTransfer(db, monthKey, transferId) {
+  const m = db.months[monthKey];
+  m.transfers = m.transfers.filter(x => x.id !== transferId);
+  return db;
+}
+
+// --- Összegzés / áttekintő ---
+
+export function categoryTotal(db, monthKey, categoryId) {
+  const m = db.months[monthKey];
+  if (!m) return 0;
+  return Math.round(m.items.filter(i => i.categoryId === categoryId).reduce((s, i) => s + i.price, 0));
+}
+
+export function monthOverview(db, monthKey) {
+  const m = db.months[monthKey] || { items: [], transfers: [] };
+  const income = Math.round(m.transfers.filter(t => t.dir === "in").reduce((s, t) => s + t.amount, 0));
+  const expenseOut = Math.round(m.transfers.filter(t => t.dir === "out").reduce((s, t) => s + t.amount, 0));
+  const expenseItems = Math.round(m.items.reduce((s, i) => s + i.price, 0));
+  const cash = Math.round(m.items.filter(i => i.payment === "cash").reduce((s, i) => s + i.price, 0));
+  const card = Math.round(m.items.filter(i => i.payment === "card").reduce((s, i) => s + i.price, 0));
+  const byCategory = db.categories
+    .slice()
+    .sort((a, b) => a.order - b.order)
+    .map(c => {
+      const sum = categoryTotal(db, monthKey, c.id);
+      return { categoryId: c.id, name: c.name, sum, share: expenseItems ? sum / expenseItems : 0 };
+    });
+  const totalExpense = expenseItems + expenseOut;
+  return { income, expenseItems, expenseOut, totalExpense, balance: income - totalExpense, byCategory, cash, card };
+}
+
+// --- Emlékeztetők (kötelező kiadások) ---
+
+function parseDay(s) { const [y, m, d] = s.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d)); }
+function ymd(d) { return d.toISOString().slice(0, 10); }
+function monthBounds(key) { const [y, m] = key.split("-").map(Number); return { start: new Date(Date.UTC(y, m - 1, 1)), end: new Date(Date.UTC(y, m, 0)) }; }
+
+export function occurrencesInMonth(rem, monthKey) {
+  if (!rem.active) return [];
+  const { start: mStart, end: mEnd } = monthBounds(monthKey);
+  const start = parseDay(rem.startDate);
+  const until = rem.until ? parseDay(rem.until) : null;
+  const interval = Math.max(1, rem.interval || 1);
+  if (start > mEnd) return [];
+  if (until && until < mStart) return [];
+  const out = [];
+  if (rem.freq === "monthly") {
+    const diff = (mStart.getUTCFullYear() - start.getUTCFullYear()) * 12 + (mStart.getUTCMonth() - start.getUTCMonth());
+    if (diff >= 0 && diff % interval === 0) {
+      const day = Math.min(start.getUTCDate(), mEnd.getUTCDate());
+      const occ = new Date(Date.UTC(mStart.getUTCFullYear(), mStart.getUTCMonth(), day));
+      if (occ >= start && (!until || occ <= until)) out.push(ymd(occ));
+    }
+    return out;
+  }
+  const stepDays = rem.freq === "weekly" ? 7 * interval : interval;
+  let cur = new Date(start);
+  let guard = 0;
+  while (cur < mStart && guard++ < 100000) cur = new Date(cur.getTime() + stepDays * 86400000);
+  while (cur <= mEnd && (!until || cur <= until) && guard++ < 100000) {
+    out.push(ymd(cur));
+    cur = new Date(cur.getTime() + stepDays * 86400000);
+  }
+  return out;
+}
+
+export function addReminder(db, r) {
+  const created = { id: r.id || genId("rem"), ...r };
+  db.reminders.push(created);
+  return created;
+}
+export function updateReminder(db, id, patch) {
+  const r = db.reminders.find(x => x.id === id);
+  if (r) Object.assign(r, patch);
+  return db;
+}
+export function deleteReminder(db, id) {
+  db.reminders = db.reminders.filter(r => r.id !== id);
+  for (const key of Object.keys(db.months)) {
+    const m = db.months[key];
+    if (m.paidReminders) m.paidReminders = m.paidReminders.filter(x => x !== id);
+  }
+  return db;
+}
+export function isReminderPaid(db, monthKey, reminderId) {
+  const m = db.months[monthKey];
+  return !!(m && m.paidReminders && m.paidReminders.includes(reminderId));
+}
+export function toggleReminderPaid(db, monthKey, reminderId) {
+  ensureMonth(db, monthKey);
+  const m = db.months[monthKey];
+  if (m.paidReminders.includes(reminderId)) m.paidReminders = m.paidReminders.filter(x => x !== reminderId);
+  else m.paidReminders.push(reminderId);
+  return db;
+}
+export function remindersDueInMonth(db, monthKey) {
+  return db.reminders
+    .filter(r => r.active)
+    .map(r => ({ reminder: r, dates: occurrencesInMonth(r, monthKey), paid: isReminderPaid(db, monthKey, r.id) }))
+    .filter(x => x.dates.length > 0);
+}
+export function remindersDueOn(db, dateKey) {
+  const monthKey = dateKey.slice(0, 7);
+  return db.reminders.filter(r => r.active && !isReminderPaid(db, monthKey, r.id) && occurrencesInMonth(r, monthKey).includes(dateKey));
+}
