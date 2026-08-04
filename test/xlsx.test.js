@@ -44,3 +44,10 @@ test("transferRows labels swap rows as Átvezetés with kind in Mód", () => {
   assert.equal(rows[1][2], "Átvezetés");
   assert.equal(rows[1][3], "Befizetés kártyára");
 });
+
+test("transferRows shows flow direction for person swaps", () => {
+  const db = createDatabase();
+  addTransfer(db, "2026-08", { dir: "swap", kind: "person", flow: "cash2card", name: "Csere", amount: 20000, date: "2026-08-04", partner: "Panni", note: "" });
+  const rows = transferRows(db, "2026-08");
+  assert.equal(rows[1][3], "Csere (kp → kártya)");
+});

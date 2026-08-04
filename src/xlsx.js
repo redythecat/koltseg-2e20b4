@@ -47,7 +47,10 @@ export function expenseRows(db, monthKey) {
 export function transferRows(db, monthKey) {
   const dir = d => (d === "in" ? "Bejövő" : d === "swap" ? "Átvezetés" : "Kimenő");
   const SWAP_KIND = { withdraw: "Készpénzfelvétel", deposit: "Befizetés kártyára", person: "Csere" };
-  const mode = t => (t.dir === "swap" ? (SWAP_KIND[t.kind] || "Átvezetés") : (t.method === "cash" ? "Készpénz" : "Utalás"));
+  const FLOW = { card2cash: "kártya → kp", cash2card: "kp → kártya" };
+  const mode = t => (t.dir === "swap"
+    ? (SWAP_KIND[t.kind] || "Átvezetés") + (t.kind === "person" && t.flow ? ` (${FLOW[t.flow]})` : "")
+    : (t.method === "cash" ? "Készpénz" : "Utalás"));
   const keys = monthKey === null ? Object.keys(db.months).sort() : [monthKey];
   const rows = [["Hónap", "Dátum", "Irány", "Mód", "Megnevezés", "Összeg", "Partner", "Megjegyzés"]];
   for (const mk of keys) {

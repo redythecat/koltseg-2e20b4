@@ -85,7 +85,7 @@ async function removeItem(id) {
 function saveTransfer(f) {
   const cur = state.editing.id;
   if (cur == null) addTransfer(state.db, state.month, f);
-  else updateTransfer(state.db, state.month, cur, { name: f.name, amount: f.amount, date: f.date, partner: f.partner, note: f.note, method: f.method, kind: f.kind });
+  else updateTransfer(state.db, state.month, cur, { name: f.name, amount: f.amount, date: f.date, partner: f.partner, note: f.note, method: f.method, kind: f.kind, flow: f.flow });
   state.editing = null; commit();
 }
 async function removeTransfer(id) {

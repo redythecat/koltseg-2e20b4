@@ -466,7 +466,7 @@ export function renderTransfersView(state, h) {
       if (dir === "swap") card.append(el("div", { class: "muted", style: "font-size:0.8125rem;margin:0 0 4px" }, "Az átvezetések nem számítanak bele az összesítésekbe."));
       for (const t of list) {
         const small = dir === "swap"
-          ? `${t.date || "—"}${t.kind === "person" && t.partner ? ` · ${t.partner}` : ""}`
+          ? `${t.date || "—"}${t.kind === "person" && t.partner ? ` · ${t.partner}` : ""}${t.kind === "person" && t.flow ? ` · ${SWAP_FLOW[t.flow] || ""}` : ""}`
           : `${t.date || "—"} · ${t.method === "cash" ? "kp" : "utalás"} · ${t.partner || "—"}`;
         card.append(el("div", { class: "item", onclick: () => h.onEditTransfer(t.id) },
           el("div", {}, el("div", {}, t.name), el("small", {}, small)),
@@ -487,27 +487,34 @@ const SWAP_KINDS = [
   ["person", "Csere valakivel"],
 ];
 export const SWAP_LABEL = { withdraw: "Készpénzfelvétel", deposit: "Befizetés kártyára", person: "Csere" };
+export const SWAP_FLOW = { card2cash: "kártya → kp", cash2card: "kp → kártya" };
 
 function renderSwapForm(state, { transfer, onSave, onDelete, onCancel }) {
-  const v = transfer || { dir: "swap", kind: "withdraw", name: "", amount: "", date: todayKey(), partner: "", note: "" };
+  const v = transfer || { dir: "swap", kind: "withdraw", name: "", amount: "", date: todayKey(), partner: "", note: "", flow: "card2cash" };
   const f = { ...v };
   if (!f.kind) f.kind = "withdraw";
+  if (!f.flow) f.flow = "card2cash";
   const wrap = el("div", { class: "card" });
   wrap.append(el("h2", {}, transfer ? "Átvezetés szerkesztése" : "Új átvezetés"));
   wrap.append(el("p", { class: "muted", style: "margin:0 0 8px;font-size:0.875rem" }, "Ugyanaz a pénz kerül máshova (nem kiadás, nem bevétel) — nem számít bele az összesítésekbe."));
   const selKind = el("select", { onchange: e => { f.kind = e.target.value; nameBox.style.display = f.kind === "person" ? "" : "none"; } },
     ...SWAP_KINDS.map(([val, lab]) => el("option", { value: val, ...(f.kind === val ? { selected: "" } : {}) }, lab)));
   const inPartner = el("input", { value: f.partner || "", oninput: e => f.partner = e.target.value, placeholder: "Név (kivel/kinek)" });
+  const selFlow = el("select", { onchange: e => f.flow = e.target.value },
+    el("option", { value: "card2cash", ...(f.flow === "card2cash" ? { selected: "" } : {}) }, "Kártya → kp (én utaltam, ő kp-t adott)"),
+    el("option", { value: "cash2card", ...(f.flow === "cash2card" ? { selected: "" } : {}) }, "Kp → kártya (én adtam kp-t, ő utalt)"));
   const inAmt = el("input", { type: "number", inputmode: "numeric", min: "0", value: f.amount, oninput: e => f.amount = Number(e.target.value), placeholder: "Összeg (Ft)" });
   const inDate = el("input", { type: "date", value: f.date, oninput: e => f.date = e.target.value });
   wrap.append(el("label", {}, "Mi történt?"), selKind);
-  const nameBox = el("div", { style: f.kind === "person" ? "" : "display:none" }, el("label", {}, "Kivel/kinek"), inPartner);
+  const nameBox = el("div", { style: f.kind === "person" ? "" : "display:none" },
+    el("label", {}, "Kivel/kinek"), inPartner,
+    el("label", {}, "Merre ment a pénz?"), selFlow);
   wrap.append(nameBox);
   wrap.append(el("div", { class: "row" }, el("div", {}, el("label", {}, "Összeg (Ft)"), inAmt), el("div", {}, el("label", {}, "Dátum"), inDate)));
   const actions = el("div", { class: "row", style: "margin-top:12px" });
   actions.append(el("button", { class: "primary", onclick: () => {
     if (!(f.amount > 0)) { toast("Összeg kötelező."); return; }
-    if (f.kind !== "person") f.partner = "";
+    if (f.kind !== "person") { f.partner = ""; f.flow = f.kind === "withdraw" ? "card2cash" : "cash2card"; }
     f.name = SWAP_LABEL[f.kind] || "Átvezetés";
     onSave(f);
   } }, "Mentés"));
