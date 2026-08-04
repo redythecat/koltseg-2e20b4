@@ -92,6 +92,16 @@ export function attachLongPress(node, cb) {
   node.addEventListener("pointerleave", clear);
 }
 
+// A címkét pontosan a rendelkezésre álló szélességre rövidíti, egy ponttal a végén.
+function fitLabel(lbl, full) {
+  lbl.textContent = full;
+  let s = full, guard = 0;
+  while (lbl.scrollWidth > lbl.clientWidth && s.length > 1 && guard++ < 60) {
+    s = s.slice(0, -1);
+    lbl.textContent = s + ".";
+  }
+}
+
 export function findCategoryIdByName(db, name) {
   const c = db.categories.find(x => x.name.toLowerCase() === String(name || "").toLowerCase());
   return c ? c.id : null;
@@ -534,7 +544,7 @@ export function renderOverview(state, h) {
 
 // --- Import ---
 
-export function renderImportView(state, { onDecode, onConfirm, onBack, onCopyPrompt, onEditRow, initialCode }) {
+export function renderImportView(state, { onDecode, onConfirm, onBack, onCopyPrompt, onEditRow, onPickCat, initialCode }) {
   const { db } = state;
   const wrap = el("div", {});
   wrap.append(el("div", { class: "topbar" }, el("h2", {}, "Blokk import"), el("button", { class: "ghost", onclick: onBack }, "Vissza")));
@@ -554,12 +564,14 @@ export function renderImportView(state, { onDecode, onConfirm, onBack, onCopyPro
     box.append(el("h3", {}, `${p.rows.length} tétel — ${monthLabel(p.month)}`));
     box.append(el("p", { class: "muted", style: "margin:0 0 8px" }, "Tipp: tartsd nyomva egy tétel nevét a név/üzlet javításához."));
     p.rows.forEach((r, idx) => {
-      const sel = el("select", { onchange: e => r.categoryId = e.target.value }, ...db.categories.map(c => el("option", { value: c.id, ...(c.id === r.categoryId ? { selected: "" } : {}) }, c.name)));
       const nameEl = el("div", { class: "editable-name" }, `${r.name} — ${ft(r.price)}`);
       if (onEditRow) attachLongPress(nameEl, () => onEditRow(idx));
-      box.append(el("div", { class: "item" },
-        el("div", {}, nameEl, el("small", {}, `${r.qty} db · ${r.store || "—"} · ${r.payment === "cash" ? "kp" : "kártya"}`)),
-        sel));
+      const info = el("div", { class: "imp-info" }, nameEl, el("small", {}, `${r.qty} db · ${r.store || "—"} · ${r.payment === "cash" ? "kp" : "kártya"}`));
+      const catNm = (db.categories.find(c => c.id === r.categoryId) || {}).name || "—";
+      const lbl = el("span", { class: "cat-pick-lbl" }, catNm);
+      const pick = el("button", { class: "cat-pick", onclick: () => onPickCat && onPickCat(idx) }, lbl, el("span", { class: "cat-pick-caret" }, "▾"));
+      requestAnimationFrame(() => fitLabel(lbl, catNm));
+      box.append(el("div", { class: "item imp-row" }, info, pick));
     });
     const total = p.rows.reduce((s, r) => s + (Number(r.price) || 0), 0);
     box.append(el("div", { class: "cat-head", style: "margin-top:10px;font-weight:800;font-size:1.05rem" }, el("span", {}, "Összesen"), el("span", {}, ft(total))));

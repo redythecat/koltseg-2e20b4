@@ -211,6 +211,13 @@ const handlers = {
     const res = await formModal("Tétel javítása", [{ key: "name", label: "Név", value: r.name }, { key: "store", label: "Üzlet", value: r.store || "" }]);
     if (res) { if (res.name.trim()) r.name = res.name.trim(); r.store = res.store.trim(); render(); }
   },
+  onPickImportCat: async (i) => {
+    const r = state.importPreview && state.importPreview.rows[i];
+    if (!r) return;
+    const cats = state.db.categories.slice().sort((a, b) => a.order - b.order).map(c => ({ label: c.name, value: c.id }));
+    const choice = await choiceModal("Válassz kategóriát", cats);
+    if (choice) { r.categoryId = choice; render(); }
+  },
   onOpenImport: (code) => { state.view = "import"; state.importCode = code || ""; state.importPreview = null; render(); },
   onOpenImportView: () => handlers.onOpenImport(""),
   onCopyImportPrompt: async () => {
@@ -305,7 +312,7 @@ function render() {
       onBack: () => { state.view = "settings"; render(); },
     }));
   } else if (state.view === "import") {
-    root.append(renderImportView(state, { initialCode: state.importCode, onDecode: decodeToPreview, onConfirm: confirmImport, onCopyPrompt: handlers.onCopyImportPrompt, onEditRow: handlers.onEditImportRow, onBack: () => { state.view = "settings"; render(); } }));
+    root.append(renderImportView(state, { initialCode: state.importCode, onDecode: decodeToPreview, onConfirm: confirmImport, onCopyPrompt: handlers.onCopyImportPrompt, onEditRow: handlers.onEditImportRow, onPickCat: handlers.onPickImportCat, onBack: () => { state.view = "settings"; render(); } }));
   } else if (state.view === "restore") {
     root.append(renderRestoreView(state, { onRestoreSnapshot: handlers.onRestoreSnapshot, onRestoreFile: handlers.onRestoreFile, onBack: handlers.onBackFromRestore }));
   } else if (state.view === "settings") {

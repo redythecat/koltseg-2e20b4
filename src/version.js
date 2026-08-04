@@ -1,6 +1,11 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.11", date: "2026-08-04", notes: [
+      "Blokk import előnézet szebb elrendezés: a tétel adatai és a kategória fele-fele helyet kapnak; a kategórianév a helyhez rövidül (pl. „Élelmisz.”), koppintással választható.",
+    ],
+  },
+  {
     v: "2.10", date: "2026-08-04", notes: [
       "Blokk import előnézet: „Összesen: X Ft” a beolvasott tételekről — egyeztethető a blokk végösszegével.",
       "Kereső a Pénzmozgásnál is (megnevezés vagy partner szerint).",
