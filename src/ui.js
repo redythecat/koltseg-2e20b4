@@ -82,6 +82,11 @@ export function el(tag, attrs = {}, ...kids) {
   return n;
 }
 
+function importDateLabel(key) {
+  const [y, m, d] = key.split("-");
+  return `${y}. ${MONTHS[Number(m) - 1]} ${d}.`;
+}
+
 export function attachLongPress(node, cb) {
   let timer = null, sx = 0, sy = 0;
   const clear = () => { if (timer) { clearTimeout(timer); timer = null; } };
@@ -561,7 +566,9 @@ export function renderImportView(state, { onDecode, onConfirm, onBack, onCopyPro
   if (state.importPreview) {
     const p = state.importPreview;
     const box = el("div", { class: "card" });
-    box.append(el("h3", {}, `${p.rows.length} tétel — ${monthLabel(p.month)}`));
+    const dates = [...new Set(p.rows.map(r => r.date).filter(Boolean))];
+    const headerLabel = dates.length === 1 ? importDateLabel(dates[0]) : monthLabel(p.month);
+    box.append(el("h3", {}, `${p.rows.length} tétel — ${headerLabel}`));
     box.append(el("p", { class: "muted", style: "margin:0 0 8px" }, "Tipp: tartsd nyomva egy tétel nevét a név/üzlet javításához."));
     p.rows.forEach((r, idx) => {
       const nameEl = el("div", { class: "editable-name" }, `${r.name} — ${ft(r.price)}`);

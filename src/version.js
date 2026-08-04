@@ -1,6 +1,11 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.12", date: "2026-08-04", notes: [
+      "Blokk import előnézet fejlécében a nap is látszik (pl. „2026. augusztus 04.”), ha a tételek egy dátumhoz tartoznak.",
+    ],
+  },
+  {
     v: "2.11", date: "2026-08-04", notes: [
       "Blokk import előnézet szebb elrendezés: a tétel adatai és a kategória fele-fele helyet kapnak; a kategórianév a helyhez rövidül (pl. „Élelmisz.”), koppintással választható.",
     ],
