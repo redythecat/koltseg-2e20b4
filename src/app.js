@@ -85,11 +85,11 @@ async function removeItem(id) {
 function saveTransfer(f) {
   const cur = state.editing.id;
   if (cur == null) addTransfer(state.db, state.month, f);
-  else updateTransfer(state.db, state.month, cur, { name: f.name, amount: f.amount, date: f.date, partner: f.partner, note: f.note, method: f.method });
+  else updateTransfer(state.db, state.month, cur, { name: f.name, amount: f.amount, date: f.date, partner: f.partner, note: f.note, method: f.method, kind: f.kind });
   state.editing = null; commit();
 }
 async function removeTransfer(id) {
-  if (!(await confirmModal("Biztosan törlöd ezt az utalást?", { okText: "Törlés", cancelText: "Mégse", danger: true }))) return;
+  if (!(await confirmModal("Biztosan törlöd ezt a pénzmozgást?", { okText: "Törlés", cancelText: "Mégse", danger: true }))) return;
   deleteTransfer(state.db, state.month, id); state.editing = null; commit();
 }
 
@@ -291,7 +291,7 @@ function renderTabbar() {
 // A history-bejegyzéseket NAVIGÁLÁSKOR (render után) rakjuk fel/le, ami minden böngészőben
 // megbízható; a vissza-esemény alatt csak a kilépéshez teszünk egy őrt.
 const SETTINGS_SUB = ["categories", "import", "restore", "templates", "reminders"];
-let histEntries = 0, suppressPop = 0, askingExit = false;
+let histEntries = 0, suppressPop = 0;
 function appDepth() {
   let d = 0;
   if (SETTINGS_SUB.includes(state.view)) d++; // alnézet a Beállítások alatt
@@ -299,8 +299,7 @@ function appDepth() {
   return d;
 }
 function syncBackHistory() {
-  if (askingExit) return;
-  const target = appDepth() + 1; // +1 az alap-őr (a főképernyőn: vissza -> kilépés-kérdés)
+  const target = appDepth() + 1; // +1 az alap-őr (a főképernyőn: vissza -> kilépés-figyelmeztetés)
   while (histEntries < target) { history.pushState({ g: ++histEntries }, ""); }
   if (histEntries > target) {
     const over = histEntries - target;
@@ -311,34 +310,16 @@ function syncBackHistory() {
 }
 window.addEventListener("popstate", () => {
   if (suppressPop > 0) { suppressPop--; return; }
-  if (askingExit) return; // a kilépés-kérdés nyitva; a belépő-pontról a vissza úgyis kilép
   histEntries = Math.max(0, histEntries - 1);
   if (document.querySelector(".modal-overlay")) { history.pushState({ g: ++histEntries }, ""); return; } // ablak nyitva: elnyeli
   if (state.editing) { state.editing = null; render(); return; }           // űrlap bezárása
   if (SETTINGS_SUB.includes(state.view)) { state.view = "settings"; render(); return; } // alnézet -> Beállítások
-  // Főképernyő: most a belépő-ponton vagyunk (őr elfogyott). NEM rakunk vissza őrt, így a
-  // „Maradok" újra felrakja, a „Kilépés" pedig ténylegesen bezár (lásd exitApp).
-  askingExit = true;
-  confirmModal("Biztos kilépsz az appból?", { okText: "Kilépés", cancelText: "Maradok" }).then(yes => {
-    askingExit = false;
-    if (yes) exitApp();
-    else history.pushState({ g: ++histEntries }, "");
-  });
+  // Főképernyő: a belépő-ponton vagyunk (őr elfogyott). Az őrt NEM tesszük vissza azonnal,
+  // így a pár mp-en belüli MÁSODIK Vissza natívan kilép — ezt a rendszer intézi, mindig működik.
+  // Ha maradsz, az őr visszakerül, és a következő Vissza újra csak figyelmeztet.
+  toast("Nyomd meg még egyszer a Vissza gombot a kilépéshez.");
+  setTimeout(syncBackHistory, 2800);
 });
-// Telepített appban az app a LEGELSŐ history-bejegyzés, ezért a history.back() ott nem lép
-// sehová (némán elnyelődik). Egy-dokumentumos ablakot viszont a window.close() bezárhat.
-// Böngésző-fülben fordítva: a close() tiltott, de a back() elvisz az előző oldalra.
-// Ha egyik sem hat, az őr leszedve marad: a következő Vissza-gomb natívan kilép.
-function exitApp() {
-  histEntries = 0;
-  window.close();
-  setTimeout(() => {
-    history.back();
-    setTimeout(() => {
-      if (!document.hidden) toast("Nyomd meg a Vissza gombot a kilépéshez.");
-    }, 400);
-  }, 150);
-}
 
 function render() {
   const root = document.getElementById("app");

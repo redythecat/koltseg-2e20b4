@@ -36,3 +36,11 @@ test("buildXlsxBytes returns a ZIP (PK header) with content", () => {
   assert.ok(bytes.length > 100);
   assert.deepEqual([bytes[0], bytes[1], bytes[2], bytes[3]], [0x50, 0x4b, 0x03, 0x04]); // "PK\x03\x04"
 });
+
+test("transferRows labels swap rows as Átvezetés with kind in Mód", () => {
+  const db = createDatabase();
+  addTransfer(db, "2026-08", { dir: "swap", kind: "deposit", name: "Befizetés kártyára", amount: 5000, date: "2026-08-04", partner: "", note: "" });
+  const rows = transferRows(db, "2026-08");
+  assert.equal(rows[1][2], "Átvezetés");
+  assert.equal(rows[1][3], "Befizetés kártyára");
+});

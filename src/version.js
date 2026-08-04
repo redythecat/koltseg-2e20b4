@@ -1,6 +1,12 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.18", date: "2026-08-04", notes: [
+      "Új a Pénzmozgásban: Átvezetés — készpénzfelvétel, befizetés kártyára vagy csere valakivel. Csak napló: semmilyen összesítésbe nem számít bele.",
+      "Kilépés egyszerűbben: kérdés-ablak helyett a Vissza gombot kétszer megnyomva lépsz ki (az első nyomásnál lent egy üzenet jelzi).",
+    ],
+  },
+  {
     v: "2.17", date: "2026-08-04", notes: [
       "A kilépés-kérdés „Kilépés” gombja telepített appban is bezárja az appot (eddig csak az ablakot csukta be).",
       "Elmentett tételeknél mostantól a pénzmozgás-gyorslista is szerkeszthető/törölhető (Beállítások → Kezelés).",

@@ -256,3 +256,18 @@ test("yearTotals splits shop items and mandatory (outgoing transfers) per year",
   assert.equal(yt.mandatory, 50000);
   assert.equal(yt.total, 52000);
 });
+
+test("swap transfers are excluded from sums and create no template", async () => {
+  const { yearTotals } = await import("../src/model.js");
+  const db = createDatabase();
+  addTransfer(db, "2026-08", { dir: "swap", kind: "withdraw", name: "Készpénzfelvétel", amount: 20000, date: "2026-08-04", partner: "", note: "" });
+  addTransfer(db, "2026-08", { dir: "out", name: "Albérlet", amount: 150000, date: "2026-08-05", partner: "", note: "" });
+  const o = monthOverview(db, "2026-08");
+  assert.equal(o.expenseOut, 150000); // az átvezetés nincs benne
+  assert.equal(o.income, 0);
+  assert.equal(o.totalExpense, 150000);
+  const yt = yearTotals(db, "2026");
+  assert.equal(yt.mandatory, 150000);
+  assert.equal(db.templates.transfers.length, 1); // csak az Albérlet, a swap nem
+  assert.equal(db.templates.transfers[0].name, "Albérlet");
+});

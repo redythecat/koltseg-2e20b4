@@ -449,7 +449,7 @@ export function renderTransfersView(state, h) {
   const q = (state.transferSearch || "").trim().toLowerCase();
   wrap.append(el("input", { id: "pm-search", value: state.transferSearch || "", placeholder: "Keresés (megnevezés vagy partner)", oninput: e => h.onTransferSearch(e.target.value), style: "margin-bottom:12px" }));
 
-  for (const [dir, title] of [["in", "Bejövő"], ["out", "Kimenő"]]) {
+  for (const [dir, title] of [["in", "Bejövő"], ["out", "Kimenő"], ["swap", "Átvezetés"]]) {
     const all = m.transfers.filter(t => t.dir === dir);
     const sum = all.reduce((s, t) => s + t.amount, 0);
     const list = q ? all.filter(t => (t.name + " " + (t.partner || "")).toLowerCase().includes(q)) : all;
@@ -457,14 +457,20 @@ export function renderTransfersView(state, h) {
     const key = "tr:" + dir;
     const open = q ? true : !isCollapsed(state, key);
     const card = el("div", { class: "card" });
+    const sumStyle = dir === "swap" ? "color:var(--muted)" : "color:" + (dir === "in" ? "var(--pos)" : "var(--neg)");
+    const sign = dir === "in" ? "+" : dir === "out" ? "−" : "";
     card.append(el("button", { class: "collapse-head", onclick: () => h.onToggleCollapse(key) },
       el("span", { class: "left" }, chev(open), el("span", { class: "sec-title" }, title)),
-      el("span", { class: "sec-sum", style: "color:" + (dir === "in" ? "var(--pos)" : "var(--neg)") }, (dir === "in" ? "+" : "−") + ft(sum))));
+      el("span", { class: "sec-sum", style: sumStyle }, sign + ft(sum))));
     if (open) {
+      if (dir === "swap") card.append(el("div", { class: "muted", style: "font-size:0.8125rem;margin:0 0 4px" }, "Az átvezetések nem számítanak bele az összesítésekbe."));
       for (const t of list) {
+        const small = dir === "swap"
+          ? `${t.date || "—"}${t.kind === "person" && t.partner ? ` · ${t.partner}` : ""}`
+          : `${t.date || "—"} · ${t.method === "cash" ? "kp" : "utalás"} · ${t.partner || "—"}`;
         card.append(el("div", { class: "item", onclick: () => h.onEditTransfer(t.id) },
-          el("div", {}, el("div", {}, t.name), el("small", {}, `${t.date || "—"} · ${t.method === "cash" ? "kp" : "utalás"} · ${t.partner || "—"}`)),
-          el("div", { class: dir === "in" ? "pos" : "neg" }, (dir === "in" ? "+" : "−") + ft(t.amount))));
+          el("div", {}, el("div", {}, t.name), el("small", {}, small)),
+          el("div", { class: dir === "in" ? "pos" : dir === "out" ? "neg" : "muted" }, sign + ft(t.amount))));
       }
       if (!list.length) card.append(el("div", { class: "item muted" }, "Nincs tétel"));
       card.append(el("button", { class: "ghost", style: "width:100%;margin-top:8px", onclick: () => h.onAddTransfer(dir) }, `Új ${title.toLowerCase()}`));
@@ -474,7 +480,45 @@ export function renderTransfersView(state, h) {
   return wrap;
 }
 
+// Átvezetés (kp ↔ kártya, vagy csere mással) — nem számít bele semmilyen összesítésbe.
+const SWAP_KINDS = [
+  ["withdraw", "Készpénzfelvétel (kártyáról kp)"],
+  ["deposit", "Befizetés kártyára (kp-ról)"],
+  ["person", "Csere valakivel"],
+];
+export const SWAP_LABEL = { withdraw: "Készpénzfelvétel", deposit: "Befizetés kártyára", person: "Csere" };
+
+function renderSwapForm(state, { transfer, onSave, onDelete, onCancel }) {
+  const v = transfer || { dir: "swap", kind: "withdraw", name: "", amount: "", date: todayKey(), partner: "", note: "" };
+  const f = { ...v };
+  if (!f.kind) f.kind = "withdraw";
+  const wrap = el("div", { class: "card" });
+  wrap.append(el("h2", {}, transfer ? "Átvezetés szerkesztése" : "Új átvezetés"));
+  wrap.append(el("p", { class: "muted", style: "margin:0 0 8px;font-size:0.875rem" }, "Ugyanaz a pénz kerül máshova (nem kiadás, nem bevétel) — nem számít bele az összesítésekbe."));
+  const selKind = el("select", { onchange: e => { f.kind = e.target.value; nameBox.style.display = f.kind === "person" ? "" : "none"; } },
+    ...SWAP_KINDS.map(([val, lab]) => el("option", { value: val, ...(f.kind === val ? { selected: "" } : {}) }, lab)));
+  const inPartner = el("input", { value: f.partner || "", oninput: e => f.partner = e.target.value, placeholder: "Név (kivel/kinek)" });
+  const inAmt = el("input", { type: "number", inputmode: "numeric", min: "0", value: f.amount, oninput: e => f.amount = Number(e.target.value), placeholder: "Összeg (Ft)" });
+  const inDate = el("input", { type: "date", value: f.date, oninput: e => f.date = e.target.value });
+  wrap.append(el("label", {}, "Mi történt?"), selKind);
+  const nameBox = el("div", { style: f.kind === "person" ? "" : "display:none" }, el("label", {}, "Kivel/kinek"), inPartner);
+  wrap.append(nameBox);
+  wrap.append(el("div", { class: "row" }, el("div", {}, el("label", {}, "Összeg (Ft)"), inAmt), el("div", {}, el("label", {}, "Dátum"), inDate)));
+  const actions = el("div", { class: "row", style: "margin-top:12px" });
+  actions.append(el("button", { class: "primary", onclick: () => {
+    if (!(f.amount > 0)) { toast("Összeg kötelező."); return; }
+    if (f.kind !== "person") f.partner = "";
+    f.name = SWAP_LABEL[f.kind] || "Átvezetés";
+    onSave(f);
+  } }, "Mentés"));
+  actions.append(el("button", { class: "ghost", onclick: onCancel }, "Mégse"));
+  wrap.append(actions);
+  if (transfer && onDelete) wrap.append(el("button", { class: "ghost", style: "color:var(--neg);width:100%;margin-top:8px", onclick: () => onDelete(transfer.id) }, "Törlés"));
+  return wrap;
+}
+
 export function renderTransferForm(state, { transfer, dir, onSave, onDelete, onCancel }) {
+  if ((transfer ? transfer.dir : dir) === "swap") return renderSwapForm(state, { transfer, onSave, onDelete, onCancel });
   const v = transfer || { dir, name: "", amount: "", date: todayKey(), partner: "", note: "", method: "transfer" };
   const f = { ...v };
   if (!f.method) f.method = "transfer";

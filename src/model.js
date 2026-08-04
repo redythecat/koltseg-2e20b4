@@ -125,6 +125,7 @@ export function deleteCategory(db, categoryId, reassignToId) {
 // --- Utalás-CRUD ---
 
 function upsertTransferTemplate(db, t) {
+  if (t.dir === "swap") return; // átvezetésből nem képzünk gyorslistát
   let tpl = db.templates.transfers.find(x => x.dir === t.dir && x.name === t.name);
   if (!tpl) db.templates.transfers.push({ id: genId("ttpl"), dir: t.dir, name: t.name, partner: t.partner, lastAmount: t.amount });
   else { tpl.partner = t.partner; tpl.lastAmount = t.amount; }
