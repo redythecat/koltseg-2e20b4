@@ -293,20 +293,26 @@ export function todayKey() {
 
 // Havi összehasonlítás + hó végi becslés (csak az aktuális hónapra ad becslést).
 export function monthComparison(db, monthKey, todayK) {
-  const cur = monthOverview(db, monthKey).totalExpense;
+  const ov = monthOverview(db, monthKey);
+  const cur = ov.totalExpense;
   const [y, m] = monthKey.split("-").map(Number);
   const prevD = new Date(Date.UTC(y, m - 2, 1));
   const prevKey = `${prevD.getUTCFullYear()}-${String(prevD.getUTCMonth() + 1).padStart(2, "0")}`;
   const prev = monthOverview(db, prevKey).totalExpense;
   const delta = cur - prev;
   const deltaPct = prev > 0 ? Math.round((delta / prev) * 100) : null;
-  let projection = null;
+  // projItems: csak a napi (változó) bolti kiadás előrevetítve.
+  // projTotal: ehhez egyszer hozzáadva a fix/kötelező (kimenő utalás) kiadás — nem felszorozva.
+  let projItems = null, projTotal = null;
   if (todayK && todayK.slice(0, 7) === monthKey) {
     const day = Number(todayK.slice(8, 10));
     const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
-    if (day > 0) projection = Math.round(cur * (daysInMonth / day));
+    if (day > 0) {
+      projItems = Math.round(ov.expenseItems * (daysInMonth / day));
+      projTotal = projItems + ov.expenseOut;
+    }
   }
-  return { current: cur, prev, delta, deltaPct, projection };
+  return { current: cur, prev, delta, deltaPct, projItems, projTotal };
 }
 
 // Az adott hónap esedékes kötelező kiadásai, kijelzéshez: a ma-hoz legközelebbi

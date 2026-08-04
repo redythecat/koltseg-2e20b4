@@ -188,23 +188,24 @@ test("monthOverview computes income, expense, balance, splits", () => {
   assert.ok(Math.abs(b0.share - 0.3) < 1e-9);
 });
 
-test("monthComparison computes delta, percent and projection for current month", () => {
+test("monthComparison: projItems extrapolates bolti, projTotal adds fixed once", () => {
   const db = createDatabase();
   const c = db.categories[0].id;
   addItem(db, "2026-07", { name: "x", qty: 1, price: 1000, store: "", date: "2026-07-10", payment: "card", categoryId: c });
   addItem(db, "2026-08", { name: "y", qty: 1, price: 500, store: "", date: "2026-08-05", payment: "card", categoryId: c });
+  addTransfer(db, "2026-08", { dir: "out", name: "Törlesztő", amount: 50000, date: "2026-08-05", partner: "", note: "" });
   const cmp = monthComparison(db, "2026-08", "2026-08-10");
   assert.equal(cmp.prev, 1000);
-  assert.equal(cmp.current, 500);
-  assert.equal(cmp.delta, -500);
-  assert.equal(cmp.deltaPct, -50);
-  assert.equal(cmp.projection, 1550); // 500 * 31/10
+  assert.equal(cmp.current, 50500);          // 500 bolti + 50000 utalás
+  assert.equal(cmp.projItems, 1550);         // 500 * 31/10 (csak bolti, felszorozva)
+  assert.equal(cmp.projTotal, 51550);        // 1550 + 50000 (fix egyszer, nem felszorozva)
 });
 
 test("monthComparison gives no projection for a non-current month", () => {
   const db = createDatabase();
   const cmp = monthComparison(db, "2026-08", "2026-09-01");
-  assert.equal(cmp.projection, null);
+  assert.equal(cmp.projItems, null);
+  assert.equal(cmp.projTotal, null);
 });
 
 test("setCategoryBudget sets and clears budget", () => {

@@ -1,6 +1,11 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.8", date: "2026-08-04", notes: [
+      "Áttekintő becslés kettévált: „Várható bolti kiadás” (a napi vásárlás előrevetítve) és „Várható havi összes” (a kötelező/utalás kiadásokkal, azok nem felszorozva).",
+    ],
+  },
+  {
     v: "2.7", date: "2026-08-04", notes: [
       "Blokk import előnézet: egy tétel nevét hosszan nyomva javíthatod a nevet és az üzletet (ha a blokk félreolvasta).",
     ],

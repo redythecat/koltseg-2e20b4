@@ -447,9 +447,10 @@ export function renderOverview(state, h) {
   const dColor = cmp.delta > 0 ? "var(--neg)" : (cmp.delta < 0 ? "var(--pos)" : "var(--muted)");
   const dTxt = (cmp.delta > 0 ? "+" : "") + ft(cmp.delta) + (cmp.deltaPct !== null ? ` (${cmp.deltaPct > 0 ? "+" : ""}${cmp.deltaPct}%)` : "");
   cmpCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Változás"), el("span", { style: `color:${dColor};font-weight:600` }, dTxt)));
-  if (cmp.projection != null) {
-    cmpCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Várható havi kiadás"), el("span", { class: "muted" }, "~" + ft(cmp.projection))));
-    cmpCard.append(el("p", { class: "muted", style: "margin:4px 0 0;font-size:13px" }, "Ha ilyen tempóban költesz tovább, kb. ennyi lesz a hónap végére."));
+  if (cmp.projItems != null) {
+    cmpCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Várható bolti kiadás"), el("span", { class: "muted" }, "~" + ft(cmp.projItems))));
+    cmpCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Várható havi összes"), el("span", { class: "muted" }, "~" + ft(cmp.projTotal))));
+    cmpCard.append(el("p", { class: "muted", style: "margin:4px 0 0;font-size:13px" }, "A „bolti” a napi vásárlásod előrevetítve. Az „összes” ehhez hozzáadja a kötelező/utalás kiadásokat (nem felszorozva)."));
   }
   wrap.append(cmpCard);
 
