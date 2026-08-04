@@ -192,6 +192,27 @@ export function renderMonthView(state, h) {
 
 // --- Tétel űrlap ---
 
+// Összecsukható, kereshető gyorslista a mentett tételekhez/pénzmozgásokhoz.
+// entries: [{ name, onPick }] — a [fejléc, tartalom] elempárt adja vissza.
+function quickListBox(entries) {
+  const chevSpan = el("span", { class: "chev" }, "▸");
+  const header = el("button", { class: "collapse-head", type: "button" },
+    el("span", { class: "left" }, chevSpan, el("span", { class: "sec-title", style: "font-size:1rem" }, `Gyorslista (${entries.length})`)));
+  const search = el("input", { placeholder: "Keresés a mentettek közt", style: "margin-bottom:8px" });
+  const quick = el("div", { class: "quick" });
+  for (const e of entries) {
+    quick.append(el("button", { class: "ghost", type: "button", "data-name": e.name.toLowerCase(), onclick: e.onPick }, `+ ${e.name}`));
+  }
+  search.oninput = () => {
+    const q = search.value.trim().toLowerCase();
+    for (const btn of quick.children) btn.style.display = (!q || btn.getAttribute("data-name").includes(q)) ? "" : "none";
+  };
+  const body = el("div", { style: "display:none" }, search, quick);
+  let open = false;
+  header.onclick = () => { open = !open; body.style.display = open ? "" : "none"; chevSpan.textContent = open ? "▾" : "▸"; };
+  return [header, body];
+}
+
 export function renderItemForm(state, { item, onSave, onDelete, onCancel }) {
   const { db } = state;
   const v = item || { name: "", qty: 1, price: "", store: "", date: todayKey(), payment: "card", categoryId: db.categories[0]?.id };
@@ -220,30 +241,15 @@ export function renderItemForm(state, { item, onSave, onDelete, onCancel }) {
 
   if (!item && db.templates.items.length) {
     const templates = db.templates.items.slice().sort((a, b) => a.name.localeCompare(b.name, "hu"));
-    const chevSpan = el("span", { class: "chev" }, "▸");
-    const header = el("button", { class: "collapse-head", type: "button" },
-      el("span", { class: "left" }, chevSpan, el("span", { class: "sec-title", style: "font-size:1rem" }, `Gyorslista (${templates.length})`)));
-    const search = el("input", { placeholder: "Keresés a mentettek közt", style: "margin-bottom:8px" });
-    const quick = el("div", { class: "quick" });
-    for (const t of templates) {
-      quick.append(el("button", { class: "ghost", type: "button", "data-name": t.name.toLowerCase(), onclick: () => {
-        inName.value = f.name = t.name;
-        inStore.value = f.store = t.store || "";
-        inQty.value = f.qty = t.lastQty ?? 1;
-        inPrice.value = f.price = t.lastPrice ?? "";
-        f.unit = t.lastPrice ?? 0;
-        selPay.value = f.payment = t.payment || "card";
-        if (db.categories.find(c => c.id === t.categoryId)) { selCat.value = f.categoryId = t.categoryId; }
-      } }, `+ ${t.name}`));
-    }
-    search.oninput = () => {
-      const q = search.value.trim().toLowerCase();
-      for (const btn of quick.children) btn.style.display = (!q || btn.getAttribute("data-name").includes(q)) ? "" : "none";
-    };
-    const body = el("div", { style: "display:none" }, search, quick);
-    let open = false;
-    header.onclick = () => { open = !open; body.style.display = open ? "" : "none"; chevSpan.textContent = open ? "▾" : "▸"; };
-    wrap.append(header, body);
+    wrap.append(...quickListBox(templates.map(t => ({ name: t.name, onPick: () => {
+      inName.value = f.name = t.name;
+      inStore.value = f.store = t.store || "";
+      inQty.value = f.qty = t.lastQty ?? 1;
+      inPrice.value = f.price = t.lastPrice ?? "";
+      f.unit = t.lastPrice ?? 0;
+      selPay.value = f.payment = t.payment || "card";
+      if (db.categories.find(c => c.id === t.categoryId)) { selCat.value = f.categoryId = t.categoryId; }
+    } }))));
   }
 
   wrap.append(el("label", {}, "Név"), inName);
@@ -538,14 +544,12 @@ export function renderTransferForm(state, { transfer, dir, onSave, onDelete, onC
   const inNote = el("input", { value: f.note, oninput: e => f.note = e.target.value, placeholder: "Megjegyzés" });
 
   if (!transfer) {
-    const tpls = state.db.templates.transfers.filter(t => t.dir === f.dir);
+    const tpls = state.db.templates.transfers.filter(t => t.dir === f.dir)
+      .slice().sort((a, b) => a.name.localeCompare(b.name, "hu"));
     if (tpls.length) {
-      wrap.append(el("label", {}, "Gyorslista"));
-      const q = el("div", { class: "quick" });
-      for (const t of tpls) q.append(el("button", { class: "ghost", onclick: () => {
+      wrap.append(...quickListBox(tpls.map(t => ({ name: t.name, onPick: () => {
         inName.value = f.name = t.name; inPartner.value = f.partner = t.partner || ""; inAmt.value = f.amount = t.lastAmount ?? "";
-      } }, `+ ${t.name}`));
-      wrap.append(q);
+      } }))));
     }
   }
   wrap.append(el("label", {}, "Megnevezés"), inName);
@@ -566,6 +570,17 @@ export function renderTransferForm(state, { transfer, dir, onSave, onDelete, onC
 
 // --- Áttekintő ---
 
+// Áttekintő-kártya összecsukható fejléccel; a tartalom a visszaadott „body"-ba kerül.
+function ovCard(state, h, key, title) {
+  const card = el("div", { class: "card" });
+  const open = !isCollapsed(state, "ov:" + key);
+  card.append(el("button", { class: "collapse-head", onclick: () => h.onToggleCollapse("ov:" + key) },
+    el("span", { class: "left" }, chev(open), el("span", { class: "sec-title", style: "font-size:1.0625rem" }, title))));
+  const body = el("div", { style: open ? "" : "display:none" });
+  card.append(body);
+  return [card, body];
+}
+
 export function renderOverview(state, h) {
   const wrap = el("div", {});
   const o = monthOverview(state.db, state.month);
@@ -578,43 +593,40 @@ export function renderOverview(state, h) {
   wrap.append(kpi);
 
   const cmp = monthComparison(state.db, state.month, todayKey());
-  const cmpCard = el("div", { class: "card" });
-  cmpCard.append(el("h3", {}, "Összehasonlítás"));
-  cmpCard.append(el("div", { class: "cat-head" }, el("span", {}, "Előző hónap kiadása"), el("span", { class: "muted" }, ft(cmp.prev))));
+  const [cmpCard, cmpBody] = ovCard(state, h, "cmp", "Összehasonlítás");
+  cmpBody.append(el("div", { class: "cat-head" }, el("span", {}, "Előző hónap kiadása"), el("span", { class: "muted" }, ft(cmp.prev))));
   const dColor = cmp.delta > 0 ? "var(--neg)" : (cmp.delta < 0 ? "var(--pos)" : "var(--muted)");
   const dTxt = (cmp.delta > 0 ? "+" : "") + ft(cmp.delta) + (cmp.deltaPct !== null ? ` (${cmp.deltaPct > 0 ? "+" : ""}${cmp.deltaPct}%)` : "");
-  cmpCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Változás"), el("span", { style: `color:${dColor};font-weight:600` }, dTxt)));
+  cmpBody.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Változás"), el("span", { style: `color:${dColor};font-weight:600` }, dTxt)));
   if (cmp.projItems != null) {
-    cmpCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Várható bolti kiadás"), el("span", { class: "muted" }, "~" + ft(cmp.projItems))));
-    cmpCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Várható havi összes"), el("span", { class: "muted" }, "~" + ft(cmp.projTotal))));
-    cmpCard.append(el("p", { class: "muted", style: "margin:4px 0 0;font-size:0.8125rem" }, "A „bolti” a napi vásárlásod előrevetítve. Az „összes” ehhez hozzáadja a kimenő pénzmozgásokat (azokat nem szorozza fel)."));
+    cmpBody.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Várható bolti kiadás"), el("span", { class: "muted" }, "~" + ft(cmp.projItems))));
+    cmpBody.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Várható havi összes"), el("span", { class: "muted" }, "~" + ft(cmp.projTotal))));
+    cmpBody.append(el("p", { class: "muted", style: "margin:4px 0 0;font-size:0.8125rem" }, "A „bolti” a napi vásárlásod előrevetítve. Az „összes” ehhez hozzáadja a kimenő pénzmozgásokat (azokat nem szorozza fel)."));
   }
   wrap.append(cmpCard);
 
-  const cats = el("div", { class: "card" });
-  cats.append(el("h3", {}, "Kiadások kategóriánként"));
+  const [cats, catsBody] = ovCard(state, h, "cats", "Kiadások kategóriánként");
   for (const b of o.byCategory) {
-    cats.append(el("div", { class: "cat-head", style: "margin-top:8px" }, el("span", {}, b.name), el("span", { class: "muted" }, `${ft(b.sum)} · ${Math.round(b.share * 100)}%`)));
-    cats.append(el("div", { class: "bar" }, el("span", { style: `width:${Math.round(b.share * 100)}%` })));
+    catsBody.append(el("div", { class: "cat-head", style: "margin-top:8px" }, el("span", {}, b.name), el("span", { class: "muted" }, `${ft(b.sum)} · ${Math.round(b.share * 100)}%`)));
+    catsBody.append(el("div", { class: "bar" }, el("span", { style: `width:${Math.round(b.share * 100)}%` })));
   }
   wrap.append(cats);
 
   // Kötelező kiadások: csak összegek (a tételes lista a Kiadások fülön pipálható)
   const due = dueSummaryForMonth(state.db, state.month, todayKey());
-  const rem = el("div", { class: "card" });
-  rem.append(el("h3", {}, "Kötelező kiadások"));
+  const [rem, remBody] = ovCard(state, h, "due", "Kötelező kiadások");
   if (!due.length) {
-    rem.append(el("div", { class: "muted" }, "Nincs esedékes ebben a hónapban."));
+    remBody.append(el("div", { class: "muted" }, "Nincs esedékes ebben a hónapban."));
   } else {
     const withAmount = due.filter(d => d.reminder.amount != null && d.reminder.amount !== "");
     const total = withAmount.reduce((s, d) => s + Number(d.reminder.amount), 0);
     const paidTotal = withAmount.filter(d => d.paid).reduce((s, d) => s + Number(d.reminder.amount), 0);
     const cashDue = withAmount.filter(d => d.reminder.payment === "cash").reduce((s, d) => s + Number(d.reminder.amount), 0);
-    rem.append(el("div", { class: "cat-head" }, el("span", {}, "Összesen"), el("span", { class: "muted" }, ft(total))));
-    rem.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Ebből kifizetve"), el("span", { class: "muted" }, ft(paidTotal))));
-    rem.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Hátralévő"), el("span", { style: "color:var(--neg);font-weight:600" }, ft(total - paidTotal))));
-    rem.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Ebből készpénz"), el("span", { class: "muted" }, ft(cashDue))));
-    rem.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Ebből kártya"), el("span", { class: "muted" }, ft(total - cashDue))));
+    remBody.append(el("div", { class: "cat-head" }, el("span", {}, "Összesen"), el("span", { class: "muted" }, ft(total))));
+    remBody.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Ebből kifizetve"), el("span", { class: "muted" }, ft(paidTotal))));
+    remBody.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Hátralévő"), el("span", { style: "color:var(--neg);font-weight:600" }, ft(total - paidTotal))));
+    remBody.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Ebből készpénz"), el("span", { class: "muted" }, ft(cashDue))));
+    remBody.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Ebből kártya"), el("span", { class: "muted" }, ft(total - cashDue))));
   }
   wrap.append(rem);
 
@@ -626,31 +638,29 @@ export function renderOverview(state, h) {
   const statRow = (card, label, value, first) =>
     card.append(el("div", { class: "cat-head", style: first ? "" : "margin-top:6px" }, el("span", {}, label), el("span", { class: "muted" }, value)));
 
-  const mCard = el("div", { class: "card" });
-  mCard.append(el("h3", {}, "Havi statisztika"));
-  if (stats.topStore) statRow(mCard, "Legtöbbet itt költöttél", `${stats.topStore.name} · ${ft(stats.topStore.sum)}`, true);
-  if (stats.biggestItem) statRow(mCard, "Legnagyobb tétel", `${stats.biggestItem.name} · ${ft(stats.biggestItem.price)}`);
-  statRow(mCard, "Összes kiadás", ft(o.totalExpense), !stats.topStore && !stats.biggestItem);
-  statRow(mCard, "Kötelező kiadás (pénzmozgás)", ft(o.mandatoryOut));
-  statRow(mCard, "Egyéb kiadás (pénzmozgás)", ft(o.otherOut));
-  statRow(mCard, "Bolti kiadás", ft(o.expenseItems));
-  statRow(mCard, "Bolti készpénz", ft(o.cash));
-  statRow(mCard, "Bolti kártya", ft(o.card));
-  statRow(mCard, "Bejövő pénzmozgás", ft(o.income));
+  const [mCard, mBody] = ovCard(state, h, "mstat", "Havi statisztika");
+  if (stats.topStore) statRow(mBody, "Legtöbbet itt költöttél", `${stats.topStore.name} · ${ft(stats.topStore.sum)}`, true);
+  if (stats.biggestItem) statRow(mBody, "Legnagyobb tétel", `${stats.biggestItem.name} · ${ft(stats.biggestItem.price)}`);
+  statRow(mBody, "Összes kiadás", ft(o.totalExpense), !stats.topStore && !stats.biggestItem);
+  statRow(mBody, "Kötelező kiadás (pénzmozgás)", ft(o.mandatoryOut));
+  statRow(mBody, "Egyéb kiadás (pénzmozgás)", ft(o.otherOut));
+  statRow(mBody, "Bolti kiadás", ft(o.expenseItems));
+  statRow(mBody, "Bolti készpénz", ft(o.cash));
+  statRow(mBody, "Bolti kártya", ft(o.card));
+  statRow(mBody, "Bejövő pénzmozgás", ft(o.income));
   wrap.append(mCard);
 
-  const yCard = el("div", { class: "card" });
-  yCard.append(el("h3", {}, `Éves statisztika (${year})`));
-  if (ys.topStore) statRow(yCard, "Legtöbbet itt költöttél", `${ys.topStore.name} · ${ft(ys.topStore.sum)}`, true);
-  if (ys.biggestItem) statRow(yCard, "Legnagyobb tétel", `${ys.biggestItem.name} · ${ft(ys.biggestItem.price)}`);
-  statRow(yCard, "Összes kiadás", ft(yt.total), !ys.topStore && !ys.biggestItem);
-  statRow(yCard, "Kötelező kiadás (pénzmozgás)", ft(yt.mandatory));
-  statRow(yCard, "Egyéb kiadás (pénzmozgás)", ft(yt.other));
-  statRow(yCard, "Bolti kiadás", ft(yt.shop));
-  statRow(yCard, "Bolti készpénz", ft(yt.cash));
-  statRow(yCard, "Bolti kártya", ft(yt.card));
-  statRow(yCard, "Bejövő pénzmozgás", ft(yt.income));
-  yCard.append(el("p", { class: "muted", style: "margin:8px 0 0;font-size:0.8125rem" }, "Kötelező = a Pénzmozgásnál kötelezőként jelölt kimenők (a „Kifizetve” gombbal rögzítettek automatikusan azok). A bolti nincs benne."));
+  const [yCard, yBody] = ovCard(state, h, "ystat", `Éves statisztika (${year})`);
+  if (ys.topStore) statRow(yBody, "Legtöbbet itt költöttél", `${ys.topStore.name} · ${ft(ys.topStore.sum)}`, true);
+  if (ys.biggestItem) statRow(yBody, "Legnagyobb tétel", `${ys.biggestItem.name} · ${ft(ys.biggestItem.price)}`);
+  statRow(yBody, "Összes kiadás", ft(yt.total), !ys.topStore && !ys.biggestItem);
+  statRow(yBody, "Kötelező kiadás (pénzmozgás)", ft(yt.mandatory));
+  statRow(yBody, "Egyéb kiadás (pénzmozgás)", ft(yt.other));
+  statRow(yBody, "Bolti kiadás", ft(yt.shop));
+  statRow(yBody, "Bolti készpénz", ft(yt.cash));
+  statRow(yBody, "Bolti kártya", ft(yt.card));
+  statRow(yBody, "Bejövő pénzmozgás", ft(yt.income));
+  yBody.append(el("p", { class: "muted", style: "margin:8px 0 0;font-size:0.8125rem" }, "Kötelező = a Pénzmozgásnál kötelezőként jelölt kimenők (a „Kifizetve” gombbal rögzítettek automatikusan azok). A bolti nincs benne."));
   wrap.append(yCard);
   return wrap;
 }

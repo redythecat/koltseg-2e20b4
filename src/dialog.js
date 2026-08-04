@@ -9,6 +9,12 @@ function overlay() {
 }
 function close(ov) { ov.remove(); }
 
+// Bezárás háttérre koppintással ÉS a telefon Vissza gombjával (app.js az ov.__dismiss-t hívja).
+function wireDismiss(ov, fn) {
+  ov.onclick = (e) => { if (e.target === ov) fn(); };
+  ov.__dismiss = fn;
+}
+
 // Bezáró X az ablak jobb felső sarkában. onClose: mit tegyen bezáráskor.
 function closeX(box, onClose) {
   const b = document.createElement("button");
@@ -33,8 +39,7 @@ export function panelModal(title, node, onClose) {
   box.append(h, node);
   const dismiss = () => { close(ov); if (onClose) onClose(); };
   closeX(box, dismiss);
-  ov.onclick = (e) => { if (e.target === ov) dismiss(); };
-  ov.__dismiss = dismiss;
+  wireDismiss(ov, dismiss);
   ov.append(box);
   return () => close(ov);   // bezárás visszahívás nélkül (pl. mentés után)
 }
@@ -66,7 +71,7 @@ export function confirmModal(message, { okText = "Igen", cancelText = "Mégse", 
     cancel.textContent = cancelText;
     ok.onclick = () => { close(ov); resolve(true); };
     cancel.onclick = () => { close(ov); resolve(false); };
-    ov.onclick = (e) => { if (e.target === ov) { close(ov); resolve(false); } };
+    wireDismiss(ov, () => { close(ov); resolve(false); });
     row.append(cancel, ok);
     box.append(p, row);
     closeX(box, () => { close(ov); resolve(false); });
@@ -117,7 +122,7 @@ export function helpModal() {
   close_.onclick = () => close(ov);
   box.append(close_);
   closeX(box, () => close(ov));
-  ov.onclick = (e) => { if (e.target === ov) close(ov); };
+  wireDismiss(ov, () => close(ov));
   ov.append(box);
 }
 
@@ -151,7 +156,7 @@ export function formModal(title, fields) {
     cancel.textContent = "Mégse";
     ok.onclick = () => { const out = {}; for (const k of Object.keys(inputs)) out[k] = inputs[k].value; close(ov); resolve(out); };
     cancel.onclick = () => { close(ov); resolve(null); };
-    ov.onclick = (e) => { if (e.target === ov) { close(ov); resolve(null); } };
+    wireDismiss(ov, () => { close(ov); resolve(null); });
     row.append(cancel, ok);
     box.append(row);
     closeX(box, () => { close(ov); resolve(null); });
@@ -214,7 +219,7 @@ export function changelogModal(entries) {
   }
 
   draw();
-  ov.onclick = (e) => { if (e.target === ov) close(ov); };
+  wireDismiss(ov, () => close(ov));
   ov.append(box);
 }
 
@@ -241,7 +246,7 @@ export function choiceModal(message, options) {
     cancel.style.cssText = "width:100%";
     cancel.textContent = "Mégse";
     cancel.onclick = () => { close(ov); resolve(null); };
-    ov.onclick = (e) => { if (e.target === ov) { close(ov); resolve(null); } };
+    wireDismiss(ov, () => { close(ov); resolve(null); });
     box.append(cancel);
     closeX(box, () => { close(ov); resolve(null); });
     ov.append(box);
