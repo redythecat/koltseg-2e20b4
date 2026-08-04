@@ -35,7 +35,7 @@ function upsertItemTemplate(db, item) {
   const unit = Math.ceil(item.price / Math.max(1, item.qty || 1));
   let t = db.templates.items.find(x => x.name === item.name && x.categoryId === item.categoryId);
   if (!t) {
-    t = { name: item.name, store: item.store, categoryId: item.categoryId, lastPrice: unit, lastQty: 1, payment: item.payment };
+    t = { id: genId("tpl"), name: item.name, store: item.store, categoryId: item.categoryId, lastPrice: unit, lastQty: 1, payment: item.payment };
     db.templates.items.push(t);
   } else {
     t.store = item.store;
@@ -43,6 +43,17 @@ function upsertItemTemplate(db, item) {
     t.lastQty = 1;
     t.payment = item.payment;
   }
+}
+
+export function deleteItemTemplate(db, id) {
+  db.templates.items = db.templates.items.filter(t => t.id !== id);
+  return db;
+}
+
+export function updateItemTemplate(db, id, patch) {
+  const t = db.templates.items.find(x => x.id === id);
+  if (t) Object.assign(t, patch);
+  return db;
 }
 
 export function addItem(db, monthKey, item) {

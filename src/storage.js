@@ -1,4 +1,4 @@
-import { createDatabase, daysBetween, todayKey } from "./model.js";
+import { createDatabase, daysBetween, todayKey, genId } from "./model.js";
 
 export const KEY = "koltseg-db-v1";
 export const BACKUPS_KEY = "koltseg-backups-v1";
@@ -16,6 +16,7 @@ export function load() {
     if (!db.settings.accent) db.settings.accent = "blue";
     if (!db.settings.collapsed) db.settings.collapsed = {};
     if (!db.settings.fontScale) db.settings.fontScale = "normal";
+    if (db.templates && Array.isArray(db.templates.items)) for (const t of db.templates.items) if (!t.id) t.id = genId("tpl");
     return db;
   } catch {
     return createDatabase();
@@ -105,6 +106,10 @@ export function readBackupFile(file) {
         if (!db || db.version !== 1 || !Array.isArray(db.categories)) throw new Error("bad");
         if (!db.reminders) db.reminders = [];
         if (!db.settings) db.settings = { theme: "system", notifications: false };
+        if (!db.settings.accent) db.settings.accent = "blue";
+        if (!db.settings.collapsed) db.settings.collapsed = {};
+        if (!db.settings.fontScale) db.settings.fontScale = "normal";
+        if (db.templates && Array.isArray(db.templates.items)) for (const t of db.templates.items) if (!t.id) t.id = genId("tpl");
         resolve(db);
       } catch {
         reject(new Error("Érvénytelen backup fájl."));

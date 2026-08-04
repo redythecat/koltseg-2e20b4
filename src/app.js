@@ -5,7 +5,7 @@ import {
   addCategory, renameCategory, deleteCategory,
   addTransfer, updateTransfer, deleteTransfer,
   addReminder, updateReminder, deleteReminder, toggleReminderPaid, remindersDueOn, daysBetween,
-  setCategoryBudget, reorderCategories, todayKey,
+  setCategoryBudget, reorderCategories, deleteItemTemplate, updateItemTemplate, todayKey,
 } from "./model.js";
 import { decodeImport } from "./codec.js";
 import { downloadXlsx, expenseRows, transferRows } from "./xlsx.js";
@@ -17,6 +17,7 @@ import {
   renderMonthView, renderItemForm, renderCategoryManager,
   renderTransfersView, renderTransferForm, renderOverview,
   renderImportView, renderRemindersView, renderReminderForm, renderSettings, renderRestoreView,
+  renderTemplatesManager, renderTemplateForm,
 } from "./ui.js";
 
 function currentMonthKey() {
@@ -46,6 +47,7 @@ const state = {
   importPreview: null,
   navHidden: false,
   search: "",
+  tplSearch: "",
 };
 
 applyTheme(state.db.settings.theme);
@@ -112,6 +114,13 @@ async function removeReminder(id) {
   deleteReminder(state.db, id); state.editing = null; commit();
 }
 
+// --- Elmentett tétel (sablon) ---
+function saveTemplate(id, patch) { updateItemTemplate(state.db, id, patch); state.editing = null; commit(); }
+async function removeTemplate(t) {
+  if (!(await confirmModal(`Törlöd a(z) "${t.name}" mentett tételt?`, { okText: "Törlés", cancelText: "Mégse", danger: true }))) return;
+  deleteItemTemplate(state.db, t.id); state.editing = null; commit();
+}
+
 // --- Import ---
 function extractPayload(input) {
   const s = String(input).trim();
@@ -155,6 +164,15 @@ const handlers = {
   onAddTransfer: (dir) => { state.editing = { type: "transfer", id: null, dir }; render(); },
   onEditTransfer: (id) => { state.editing = { type: "transfer", id }; render(); },
   onManageCategories: () => { state.view = "categories"; render(); },
+  onOpenTemplates: () => { state.view = "templates"; state.tplSearch = ""; render(); },
+  onTplSearch: (v) => {
+    state.tplSearch = v;
+    render();
+    const si = document.getElementById("tpl-search");
+    if (si) { si.focus(); const n = si.value.length; try { si.setSelectionRange(n, n); } catch { /* noop */ } }
+  },
+  onEditTemplate: (id) => { state.editing = { type: "template", id }; render(); },
+  onDeleteTemplate: (t) => removeTemplate(t),
   onSearchInput: (v) => {
     state.search = v;
     render();
@@ -251,6 +269,11 @@ function render() {
   } else if (state.editing?.type === "reminder") {
     const r = state.editing.id ? state.db.reminders.find(x => x.id === state.editing.id) : null;
     root.append(renderReminderForm(state, { reminder: r, onSave: saveReminder, onDelete: removeReminder, onCancel: () => { state.editing = null; render(); } }));
+  } else if (state.editing?.type === "template" && state.db.templates.items.find(x => x.id === state.editing.id)) {
+    const t = state.db.templates.items.find(x => x.id === state.editing.id);
+    root.append(renderTemplateForm(state, { template: t, onSave: saveTemplate, onDelete: removeTemplate, onCancel: () => { state.editing = null; render(); } }));
+  } else if (state.view === "templates") {
+    root.append(renderTemplatesManager(state, { onTplSearch: handlers.onTplSearch, onEditTemplate: handlers.onEditTemplate, onDeleteTemplate: handlers.onDeleteTemplate, onBack: () => { state.editing = null; state.view = "settings"; render(); } }));
   } else if (state.view === "transfers") {
     root.append(renderTransfersView(state, handlers));
   } else if (state.view === "overview") {

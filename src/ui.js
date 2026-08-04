@@ -163,10 +163,14 @@ export function renderItemForm(state, { item, onSave, onDelete, onCancel }) {
     ...db.categories.map(c => el("option", { value: c.id, ...(c.id === f.categoryId ? { selected: "" } : {}) }, c.name)));
 
   if (!item && db.templates.items.length) {
+    const templates = db.templates.items.slice().sort((a, b) => a.name.localeCompare(b.name, "hu"));
+    const chevSpan = el("span", { class: "chev" }, "▸");
+    const header = el("button", { class: "collapse-head", type: "button" },
+      el("span", { class: "left" }, chevSpan, el("span", { class: "sec-title", style: "font-size:1rem" }, `Gyorslista (${templates.length})`)));
+    const search = el("input", { placeholder: "Keresés a mentettek közt", style: "margin-bottom:8px" });
     const quick = el("div", { class: "quick" });
-    wrap.append(el("label", {}, "Gyorslista"));
-    for (const t of db.templates.items) {
-      quick.append(el("button", { class: "ghost", onclick: () => {
+    for (const t of templates) {
+      quick.append(el("button", { class: "ghost", type: "button", "data-name": t.name.toLowerCase(), onclick: () => {
         inName.value = f.name = t.name;
         inStore.value = f.store = t.store || "";
         inQty.value = f.qty = t.lastQty ?? 1;
@@ -175,7 +179,14 @@ export function renderItemForm(state, { item, onSave, onDelete, onCancel }) {
         if (db.categories.find(c => c.id === t.categoryId)) { selCat.value = f.categoryId = t.categoryId; }
       } }, `+ ${t.name}`));
     }
-    wrap.append(quick);
+    search.oninput = () => {
+      const q = search.value.trim().toLowerCase();
+      for (const btn of quick.children) btn.style.display = (!q || btn.getAttribute("data-name").includes(q)) ? "" : "none";
+    };
+    const body = el("div", { style: "display:none" }, search, quick);
+    let open = false;
+    header.onclick = () => { open = !open; body.style.display = open ? "" : "none"; chevSpan.textContent = open ? "▾" : "▸"; };
+    wrap.append(header, body);
   }
 
   wrap.append(el("label", {}, "Név"), inName);
@@ -213,8 +224,19 @@ function setupCategoryDrag(handle, card, list, onReorder) {
       const r = other.getBoundingClientRect();
       if (e.clientY < r.top + r.height / 2) { after = other; break; }
     }
-    if (after == null) { if (list.lastElementChild !== card) list.appendChild(card); }
-    else if (after !== card.nextElementSibling) list.insertBefore(card, after);
+    const willChange = after == null ? list.lastElementChild !== card : after !== card.nextElementSibling;
+    if (!willChange) return;
+    // FLIP animáció: rögzítjük a pozíciókat, áthelyezünk, majd visszacsúsztatjuk átmenettel
+    const cards = [...list.querySelectorAll(".cat-card")];
+    const firsts = new Map(cards.map(c => [c, c.getBoundingClientRect().top]));
+    if (after == null) list.appendChild(card); else list.insertBefore(card, after);
+    for (const c of cards) {
+      const dy = firsts.get(c) - c.getBoundingClientRect().top;
+      if (!dy) continue;
+      c.style.transition = "none";
+      c.style.transform = `translateY(${dy}px)`;
+      requestAnimationFrame(() => { c.style.transition = "transform 0.16s ease"; c.style.transform = ""; });
+    }
   };
   const onUp = () => {
     const wasActive = activated;
@@ -257,6 +279,63 @@ export function renderCategoryManager(state, { onAdd, onSave, onDelete, onBack, 
   wrap.append(el("div", { class: "card" }, el("label", {}, "Új kategória"), nc,
     el("button", { class: "primary", style: "margin-top:8px;width:100%", onclick: () => { if (nc.value.trim()) onAdd(nc.value.trim()); } }, "Hozzáadás")));
   wrap.append(el("p", { class: "muted" }, "A havi keret opcionális. Ha megadod, a Kiadásoknál a kategória sávval mutatja, hol tartasz, és pirosra vált, ha átléped."));
+  return wrap;
+}
+
+// --- Elmentett tételek (sablonok) kezelése ---
+
+export function renderTemplatesManager(state, h) {
+  const { db } = state;
+  const wrap = el("div", {});
+  wrap.append(el("div", { class: "topbar" }, el("h2", {}, "Elmentett tételek"), el("button", { class: "ghost", onclick: h.onBack }, "Kész")));
+  wrap.append(el("input", { id: "tpl-search", value: state.tplSearch || "", placeholder: "Keresés név szerint", oninput: e => h.onTplSearch(e.target.value), style: "margin-bottom:8px" }));
+
+  const q = (state.tplSearch || "").trim().toLowerCase();
+  const catName = id => (db.categories.find(c => c.id === id) || {}).name || "—";
+  let list = db.templates.items.slice().sort((a, b) => a.name.localeCompare(b.name, "hu"));
+  if (q) list = list.filter(t => t.name.toLowerCase().includes(q));
+  const total = list.length;
+  const shown = list.slice(0, 60);
+
+  if (!db.templates.items.length) wrap.append(el("div", { class: "card muted" }, "Még nincs elmentett tétel. Ahogy tételeket veszel fel, ezek automatikusan ide kerülnek gyorslistának."));
+  else if (!total) wrap.append(el("div", { class: "card muted" }, "Nincs találat."));
+
+  for (const t of shown) {
+    const card = el("div", { class: "card" });
+    card.append(el("div", { class: "cat-head" }, el("span", { class: "sec-title", style: "font-size:1rem" }, t.name), el("span", { class: "muted" }, `~${ft(t.lastPrice ?? 0)}/db`)));
+    card.append(el("div", { class: "muted", style: "margin:2px 0 8px" }, `${catName(t.categoryId)} · ${t.store || "—"} · ${t.payment === "cash" ? "kp" : "kártya"}`));
+    const row = el("div", { class: "row" });
+    row.append(el("button", { class: "ghost", onclick: () => h.onEditTemplate(t.id) }, "Szerkeszt"));
+    row.append(el("button", { class: "ghost", style: "color:var(--neg)", onclick: () => h.onDeleteTemplate(t) }, "Töröl"));
+    card.append(row);
+    wrap.append(card);
+  }
+  if (total > shown.length) wrap.append(el("p", { class: "muted" }, `${shown.length} / ${total} látszik — finomíts a keresésen a többihez.`));
+  return wrap;
+}
+
+export function renderTemplateForm(state, { template, onSave, onDelete, onCancel }) {
+  const { db } = state;
+  const f = { name: template.name, store: template.store || "", lastPrice: template.lastPrice ?? "", categoryId: template.categoryId, payment: template.payment || "card" };
+  const wrap = el("div", { class: "card" });
+  wrap.append(el("h2", {}, "Elmentett tétel szerkesztése"));
+  const inName = el("input", { value: f.name, oninput: e => f.name = e.target.value, placeholder: "Név" });
+  const inStore = el("input", { value: f.store, oninput: e => f.store = e.target.value, placeholder: "Üzlet" });
+  const inPrice = el("input", { type: "number", inputmode: "numeric", min: "0", value: f.lastPrice, oninput: e => f.lastPrice = Number(e.target.value), placeholder: "Egységár (Ft)" });
+  const selPay = el("select", { onchange: e => f.payment = e.target.value },
+    el("option", { value: "card", ...(f.payment === "card" ? { selected: "" } : {}) }, "Kártya"),
+    el("option", { value: "cash", ...(f.payment === "cash" ? { selected: "" } : {}) }, "Készpénz"));
+  const selCat = el("select", { onchange: e => f.categoryId = e.target.value },
+    ...db.categories.map(c => el("option", { value: c.id, ...(c.id === f.categoryId ? { selected: "" } : {}) }, c.name)));
+  wrap.append(el("label", {}, "Név"), inName);
+  wrap.append(el("label", {}, "Üzlet"), inStore);
+  wrap.append(el("div", { class: "row" }, el("div", {}, el("label", {}, "Egységár (Ft)"), inPrice), el("div", {}, el("label", {}, "Fizetés"), selPay)));
+  wrap.append(el("label", {}, "Kategória"), selCat);
+  const actions = el("div", { class: "row", style: "margin-top:12px" });
+  actions.append(el("button", { class: "primary", onclick: () => { if (!f.name) { toast("Név kötelező."); return; } onSave(template.id, { name: f.name.trim(), store: f.store, lastPrice: Math.ceil(Number(f.lastPrice) || 0), categoryId: f.categoryId, payment: f.payment }); } }, "Mentés"));
+  actions.append(el("button", { class: "ghost", onclick: onCancel }, "Mégse"));
+  wrap.append(actions);
+  wrap.append(el("button", { class: "ghost", style: "color:var(--neg);width:100%;margin-top:8px", onclick: () => onDelete(template) }, "Törlés"));
   return wrap;
 }
 
@@ -553,6 +632,7 @@ export function renderSettings(state, h) {
     b("Hogyan használd (súgó)", h.onOpenHelp, "primary"),
     b("Kötelező kiadások / emlékeztetők", h.onOpenReminders),
     b("Kategóriák kezelése", h.onManageCategories),
+    b("Elmentett tételek", h.onOpenTemplates),
     b("Blokk import", h.onOpenImportView));
   wrap.append(linksCard);
 

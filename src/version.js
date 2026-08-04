@@ -1,6 +1,13 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.5", date: "2026-08-04", notes: [
+      "Elmentett tételek kezelője (Beállítások → Kezelés): keresés, szerkesztés, törlés.",
+      "Új tételnél a gyorslista összecsukható és kereshető — 600 tételnél is átlátható.",
+      "Kategória áthelyezése most látványosan átcsúszik (animáció).",
+    ],
+  },
+  {
     v: "2.4", date: "2026-08-04", notes: [
       "Kötelező kiadás: az ismétlődés lehet „Egyszeri”, és az értesítés külön ki/be kapcsolható.",
       "„Utalások” → „Pénzmozgás”: megadható, hogy készpénz vagy utalás.",
