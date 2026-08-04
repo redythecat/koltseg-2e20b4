@@ -10,7 +10,7 @@ function normalize(db) {
   if (!db.settings) db.settings = { theme: "system", notifications: false };
   if (!db.settings.accent) db.settings.accent = "blue";
   if (!db.settings.collapsed) db.settings.collapsed = {};
-  if (!db.settings.fontScale) db.settings.fontScale = "normal";
+  if (!db.settings.fontScale || db.settings.fontScale === "large") db.settings.fontScale = "normal";
   if (db.templates && Array.isArray(db.templates.items)) for (const t of db.templates.items) if (!t.id) t.id = genId("tpl");
   if (db.templates && Array.isArray(db.templates.transfers)) for (const t of db.templates.transfers) if (!t.id) t.id = genId("ttpl");
   // Régi adat: a „Kifizetve" gombbal rögzített kimenők jegyzetéről ismerjük fel a kötelezőt.

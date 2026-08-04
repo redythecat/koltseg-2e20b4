@@ -151,9 +151,9 @@ export function renderMonthView(state, h) {
   const { db, month } = state;
   const wrap = el("div");
 
-  const pinned = renderRemindersPinned(state, h); if (pinned) wrap.append(pinned);
-
   wrap.append(renderPageHead(state, h, "Kiadások"));
+
+  const pinned = renderRemindersPinned(state, h); if (pinned) wrap.append(pinned);
 
   const q = (state.search || "").trim().toLowerCase();
   wrap.append(el("input", { id: "kiadas-search", value: state.search || "", placeholder: "Keresés (név vagy üzlet)", oninput: e => h.onSearchInput(e.target.value), style: "margin:10px 0 8px" }));
@@ -868,7 +868,7 @@ export function renderSettings(state, h) {
   const fsCard = el("div", { class: "card" });
   fsCard.append(el("label", {}, "Betűméret"));
   fsCard.append(el("select", { onchange: e => h.onSetFontScale(e.target.value) },
-    ...[["small", "Kicsi"], ["normal", "Normál"], ["large", "Nagy"]].map(([v, l]) => el("option", { value: v, ...(db.settings.fontScale === v ? { selected: "" } : {}) }, l))));
+    ...[["small", "Kicsi"], ["normal", "Normál"]].map(([v, l]) => el("option", { value: v, ...(db.settings.fontScale === v ? { selected: "" } : {}) }, l))));
   wrap.append(fsCard);
 
   // 4) Fontos figyelmeztetés — közvetlenül a biztonsági mentés fölé

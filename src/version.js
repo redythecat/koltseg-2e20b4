@@ -4,7 +4,9 @@ export const CHANGELOG = [
     v: "2.25", date: "2026-08-04", notes: [
       "Egységes oldalfejléc: a lap címe (Kiadások / Pénzmozgás / Áttekintő) és a hónapváltó egy sorban, halvány kiemelő kerettel — a Kiadások oldal is kapott címet.",
       "A fejlécben az év és a hónap mellől elmaradt a fölösleges legördülő-nyíl (koppintásra ugyanúgy választható).",
-      "Az alsó menüsáv alacsonyabb lett, az összecsukó gomb pedig keskenyebb — kevesebb üres hely, több marad a tartalomnak.",
+      "Az alsó menüsáv alacsonyabb lett, az összecsukó gomb és a fogaskerék pedig keskenyebb — kevesebb üres hely, több marad a tartalomnak.",
+      "A Kiadások oldalon a cím és a hónapváltó legfelülre került, a kötelező kiadások fölé.",
+      "Betűméret: a „Nagy” lehetőség elmaradt, marad a Kicsi és a Normál. (Ha eddig nagy volt nálad, normálra vált.)",
     ],
   },
   {

@@ -14,7 +14,7 @@ export function applyAccent(key) {
   document.documentElement.style.setProperty("--accent", a.hex);
 }
 
-// Betűméret: "small" | "normal" | "large" — a data-fontscale-t a CSS skálázza (rem-alapú UI).
+// Betűméret: "small" | "normal" — a data-fontscale-t a CSS skálázza (rem-alapú UI).
 export function applyFontScale(scale) {
   const s = scale === "small" || scale === "large" ? scale : "normal";
   document.documentElement.setAttribute("data-fontscale", s);
