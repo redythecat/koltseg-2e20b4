@@ -3,6 +3,7 @@ export const CHANGELOG = [
   {
     v: "2.25", date: "2026-08-04", notes: [
       "Egységes oldalfejléc: a lap címe (Kiadások / Pénzmozgás / Áttekintő) és a hónapváltó egy sorban, halvány kiemelő kerettel — a Kiadások oldal is kapott címet.",
+      "A fejlécben az év és a hónap mellől elmaradt a fölösleges legördülő-nyíl (koppintásra ugyanúgy választható).",
     ],
   },
   {

@@ -1,4 +1,4 @@
-const CACHE = "koltseg-v46";
+const CACHE = "koltseg-v47";
 const ASSETS = [
   ".", "index.html", "styles.css", "manifest.webmanifest",
   "src/app.js", "src/ui.js", "src/model.js", "src/storage.js", "src/codec.js",
