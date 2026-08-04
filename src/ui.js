@@ -390,13 +390,6 @@ export function renderTransfersView(state, h) {
   wrap.append(el("h2", { style: "margin-bottom:10px" }, "Pénzmozgás"));
   wrap.append(el("div", { style: "margin-bottom:12px" }, renderMonthNav(state, h)));
 
-  const sumIn = m.transfers.filter(t => t.dir === "in").reduce((s, t) => s + t.amount, 0);
-  const sumOut = m.transfers.filter(t => t.dir === "out").reduce((s, t) => s + t.amount, 0);
-  const bal = sumIn - sumOut;
-  wrap.append(el("div", { class: "month-total" },
-    el("span", { class: "mt-label" }, "Egyenleg"),
-    el("span", { class: "mt-amount", style: bal >= 0 ? "color:var(--pos)" : "color:var(--neg)" }, (bal >= 0 ? "+" : "−") + ft(Math.abs(bal)))));
-
   for (const [dir, title] of [["in", "Bejövő"], ["out", "Kimenő"]]) {
     const list = m.transfers.filter(t => t.dir === dir);
     const sum = list.reduce((s, t) => s + t.amount, 0);

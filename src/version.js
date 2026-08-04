@@ -3,7 +3,6 @@ export const CHANGELOG = [
   {
     v: "2.9", date: "2026-08-04", notes: [
       "Kiadások tetején a havi összeg lenyitható: válaszd ki, a „Havi összes” vagy a „Bolti (kötelezők nélkül)” szám legyen az elsődleges. Ha nincs kötelező/utalás, csak egy szám van.",
-      "Pénzmozgás tetején az egyenleg (bejövő − kimenő) kiemelve.",
     ],
   },
   {
