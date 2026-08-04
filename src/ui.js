@@ -22,16 +22,24 @@ function dueWhenText(daysUntil) {
 }
 
 // Év/hónap választó (Kiadások és Áttekintő közösen használja)
-export function renderMonthNav(state, h) {
+export function renderMonthNav(state, h, short = false) {
   const [y, m] = state.month.split("-").map(Number);
+  const names = short ? MONTH_SHORT : MONTHS;
   const ySel = el("select", { "aria-label": "Év", onchange: e => h.onSetMonth(`${e.target.value}-${String(m).padStart(2, "0")}`) },
     ...YEARS.map(yy => el("option", { value: yy, ...(yy === y ? { selected: "" } : {}) }, String(yy))));
   const mSel = el("select", { "aria-label": "Hónap", onchange: e => h.onSetMonth(`${y}-${e.target.value}`) },
-    ...MONTHS.map((name, i) => { const val = String(i + 1).padStart(2, "0"); return el("option", { value: val, ...(i + 1 === m ? { selected: "" } : {}) }, name); }));
+    ...names.map((name, i) => { const val = String(i + 1).padStart(2, "0"); return el("option", { value: val, ...(i + 1 === m ? { selected: "" } : {}) }, name); }));
   return el("div", { class: "month-nav" },
     el("button", { class: "ghost", "aria-label": "Előző hónap", onclick: h.onPrevMonth }, "‹"),
     ySel, mSel,
     el("button", { class: "ghost", "aria-label": "Következő hónap", onclick: h.onNextMonth }, "›"));
+}
+
+// Oldalfejléc: a cím és a hónapváltó egy sorban, finom kiemelő kerettel.
+export function renderPageHead(state, h, title) {
+  return el("div", { class: "page-head" },
+    el("span", { class: "page-title" }, title),
+    renderMonthNav(state, h, true));
 }
 
 // Fix, felül megjelenő kötelező kiadások — checkboxszal, esedékességgel, sürgős piros jelöléssel
@@ -145,7 +153,7 @@ export function renderMonthView(state, h) {
 
   const pinned = renderRemindersPinned(state, h); if (pinned) wrap.append(pinned);
 
-  wrap.append(renderMonthNav(state, h));
+  wrap.append(renderPageHead(state, h, "Kiadások"));
 
   const q = (state.search || "").trim().toLowerCase();
   wrap.append(el("input", { id: "kiadas-search", value: state.search || "", placeholder: "Keresés (név vagy üzlet)", oninput: e => h.onSearchInput(e.target.value), style: "margin:10px 0 8px" }));
@@ -446,8 +454,7 @@ export function renderTransfersView(state, h) {
   const { db, month } = state;
   const m = db.months[month] || { items: [], transfers: [] };
   const wrap = el("div", {});
-  wrap.append(el("h2", { style: "margin-bottom:10px" }, "Pénzmozgás"));
-  wrap.append(el("div", { style: "margin-bottom:12px" }, renderMonthNav(state, h)));
+  wrap.append(renderPageHead(state, h, "Pénzmozgás"));
 
   const q = (state.transferSearch || "").trim().toLowerCase();
   wrap.append(el("input", { id: "pm-search", value: state.transferSearch || "", placeholder: "Keresés (megnevezés vagy partner)", oninput: e => h.onTransferSearch(e.target.value), style: "margin-bottom:12px" }));
@@ -584,8 +591,7 @@ function ovCard(state, h, key, title) {
 export function renderOverview(state, h) {
   const wrap = el("div", {});
   const o = monthOverview(state.db, state.month);
-  wrap.append(el("h2", { style: "margin-bottom:10px" }, "Áttekintő"));
-  wrap.append(el("div", { style: "margin-bottom:12px" }, renderMonthNav(state, h)));
+  wrap.append(renderPageHead(state, h, "Áttekintő"));
   const kpi = el("div", { class: "card" });
   kpi.append(el("div", { class: "cat-head" }, el("span", {}, "Bevétel"), el("span", { class: "pos" }, ft(o.income))));
   kpi.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Kiadás"), el("span", { class: "neg" }, ft(o.totalExpense))));

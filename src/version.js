@@ -1,6 +1,11 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.25", date: "2026-08-04", notes: [
+      "Egységes oldalfejléc: a lap címe (Kiadások / Pénzmozgás / Áttekintő) és a hónapváltó egy sorban, halvány kiemelő kerettel — a Kiadások oldal is kapott címet.",
+    ],
+  },
+  {
     v: "2.24", date: "2026-08-04", notes: [
       "Az elmentett tétel és pénzmozgás szerkesztése felugró ablakban nyílik (nem külön oldalon).",
       "A telefon Vissza gombja most bezárja a nyitott ablakot — a súgót és a verzió-naplót is.",
