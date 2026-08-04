@@ -1,6 +1,12 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.21", date: "2026-08-04", notes: [
+      "A kimenő pénzmozgás lehet „kötelező” vagy „egyéb”: a Kifizetve gombbal rögzítettek automatikusan kötelezők, a kézzel felvitteknél pipával jelölheted. A régi, Kifizetvéből született tételeket az app magától felismeri.",
+      "Havi és Éves statisztika azonos, érthető bontásban: összes / kötelező / egyéb / bolti (+kp/kártya) / bejövő — és az évesben is látszik a legtöbbet költött hely meg a legnagyobb tétel.",
+    ],
+  },
+  {
     v: "2.20", date: "2026-08-04", notes: [
       "Áttekintő átrendezve: a statisztika kettévált Havi és Éves kártyára (legalul), mindkettőben bolti kp/kártya összeggel.",
       "A Kötelező kiadások kártya rövidebb: csak az összegek (összesen, kifizetve, hátralévő + kp/kártya bontás), a pipálható lista a Kiadások fülön maradt.",

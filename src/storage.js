@@ -5,20 +5,30 @@ export const BACKUPS_KEY = "koltseg-backups-v1";
 export const AUTO_KEY = "koltseg-autobackup-last";
 const MAX_SNAPSHOTS = 3;
 
+function normalize(db) {
+  if (!db.reminders) db.reminders = [];
+  if (!db.settings) db.settings = { theme: "system", notifications: false };
+  if (!db.settings.accent) db.settings.accent = "blue";
+  if (!db.settings.collapsed) db.settings.collapsed = {};
+  if (!db.settings.fontScale) db.settings.fontScale = "normal";
+  if (db.templates && Array.isArray(db.templates.items)) for (const t of db.templates.items) if (!t.id) t.id = genId("tpl");
+  if (db.templates && Array.isArray(db.templates.transfers)) for (const t of db.templates.transfers) if (!t.id) t.id = genId("ttpl");
+  // Régi adat: a „Kifizetve" gombbal rögzített kimenők jegyzetéről ismerjük fel a kötelezőt.
+  for (const key of Object.keys(db.months || {})) {
+    for (const t of db.months[key].transfers || []) {
+      if (t.dir === "out" && t.mandatory === undefined && t.note === "kötelező kiadás") t.mandatory = true;
+    }
+  }
+  return db;
+}
+
 export function load() {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return createDatabase();
     const db = JSON.parse(raw);
     if (!db || db.version !== 1 || !Array.isArray(db.categories)) return createDatabase();
-    if (!db.reminders) db.reminders = [];
-    if (!db.settings) db.settings = { theme: "system", notifications: false };
-    if (!db.settings.accent) db.settings.accent = "blue";
-    if (!db.settings.collapsed) db.settings.collapsed = {};
-    if (!db.settings.fontScale) db.settings.fontScale = "normal";
-    if (db.templates && Array.isArray(db.templates.items)) for (const t of db.templates.items) if (!t.id) t.id = genId("tpl");
-    if (db.templates && Array.isArray(db.templates.transfers)) for (const t of db.templates.transfers) if (!t.id) t.id = genId("ttpl");
-    return db;
+    return normalize(db);
   } catch {
     return createDatabase();
   }
@@ -105,14 +115,7 @@ export function readBackupFile(file) {
       try {
         const db = JSON.parse(fr.result);
         if (!db || db.version !== 1 || !Array.isArray(db.categories)) throw new Error("bad");
-        if (!db.reminders) db.reminders = [];
-        if (!db.settings) db.settings = { theme: "system", notifications: false };
-        if (!db.settings.accent) db.settings.accent = "blue";
-        if (!db.settings.collapsed) db.settings.collapsed = {};
-        if (!db.settings.fontScale) db.settings.fontScale = "normal";
-        if (db.templates && Array.isArray(db.templates.items)) for (const t of db.templates.items) if (!t.id) t.id = genId("tpl");
-        if (db.templates && Array.isArray(db.templates.transfers)) for (const t of db.templates.transfers) if (!t.id) t.id = genId("ttpl");
-        resolve(db);
+        resolve(normalize(db));
       } catch {
         reject(new Error("Érvénytelen backup fájl."));
       }

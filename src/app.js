@@ -85,7 +85,7 @@ async function removeItem(id) {
 function saveTransfer(f) {
   const cur = state.editing.id;
   if (cur == null) addTransfer(state.db, state.month, f);
-  else updateTransfer(state.db, state.month, cur, { name: f.name, amount: f.amount, date: f.date, partner: f.partner, note: f.note, method: f.method, kind: f.kind, flow: f.flow });
+  else updateTransfer(state.db, state.month, cur, { name: f.name, amount: f.amount, date: f.date, partner: f.partner, note: f.note, method: f.method, kind: f.kind, flow: f.flow, mandatory: f.mandatory });
   state.editing = null; commit();
 }
 async function removeTransfer(id) {
@@ -205,9 +205,9 @@ const handlers = {
     toggleReminderPaid(state.db, state.month, r.id);
     commit();
     if (!wasPaid && r.amount != null && r.amount !== "") {
-      const yes = await confirmModal(`Rögzítsem "${r.name}" (${new Intl.NumberFormat("hu-HU").format(r.amount)} Ft) kimenő utalásként is?`, { okText: "Igen, rögzítsd", cancelText: "Nem" });
+      const yes = await confirmModal(`Rögzítsem "${r.name}" (${new Intl.NumberFormat("hu-HU").format(r.amount)} Ft) kimenő pénzmozgásként is?`, { okText: "Igen, rögzítsd", cancelText: "Nem" });
       if (yes) {
-        addTransfer(state.db, state.month, { dir: "out", name: r.name, amount: Number(r.amount), date: state.month + "-" + String(new Date().getDate()).padStart(2, "0"), partner: "", note: "kötelező kiadás" });
+        addTransfer(state.db, state.month, { dir: "out", name: r.name, amount: Number(r.amount), date: state.month + "-" + String(new Date().getDate()).padStart(2, "0"), partner: "", note: "kötelező kiadás", mandatory: true, method: r.payment === "cash" ? "cash" : "transfer" });
         commit();
       }
     }

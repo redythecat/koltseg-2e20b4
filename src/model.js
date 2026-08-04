@@ -174,6 +174,7 @@ export function monthOverview(db, monthKey) {
   const m = db.months[monthKey] || { items: [], transfers: [] };
   const income = Math.round(m.transfers.filter(t => t.dir === "in").reduce((s, t) => s + t.amount, 0));
   const expenseOut = Math.round(m.transfers.filter(t => t.dir === "out").reduce((s, t) => s + t.amount, 0));
+  const mandatoryOut = Math.round(m.transfers.filter(t => t.dir === "out" && t.mandatory).reduce((s, t) => s + t.amount, 0));
   const expenseItems = Math.round(m.items.reduce((s, i) => s + i.price, 0));
   const cash = Math.round(m.items.filter(i => i.payment === "cash").reduce((s, i) => s + i.price, 0));
   const card = Math.round(m.items.filter(i => i.payment === "card").reduce((s, i) => s + i.price, 0));
@@ -185,13 +186,11 @@ export function monthOverview(db, monthKey) {
       return { categoryId: c.id, name: c.name, sum, share: expenseItems ? sum / expenseItems : 0 };
     });
   const totalExpense = expenseItems + expenseOut;
-  return { income, expenseItems, expenseOut, totalExpense, balance: income - totalExpense, byCategory, cash, card };
+  return { income, expenseItems, expenseOut, mandatoryOut, otherOut: expenseOut - mandatoryOut, totalExpense, balance: income - totalExpense, byCategory, cash, card };
 }
 
-// Hasznos statisztikák egy hónapra.
-export function monthStats(db, monthKey) {
-  const m = db.months[monthKey];
-  const items = m ? m.items : [];
+// Hasznos statisztikák tétel-listából (legtöbbet költött bolt, legnagyobb tétel).
+function statsFromItems(items) {
   let topStore = null, biggestItem = null;
   const byStore = {};
   for (const it of items) {
@@ -205,6 +204,19 @@ export function monthStats(db, monthKey) {
   return { topStore, biggestItem };
 }
 
+export function monthStats(db, monthKey) {
+  const m = db.months[monthKey];
+  return statsFromItems(m ? m.items : []);
+}
+
+export function yearStats(db, year) {
+  const items = [];
+  for (const key of Object.keys(db.months)) {
+    if (key.startsWith(year + "-")) items.push(...db.months[key].items);
+  }
+  return statsFromItems(items);
+}
+
 // Egy adott év összes bolti kiadása (minden hónap tétele).
 export function yearTotal(db, year) {
   let sum = 0;
@@ -214,19 +226,23 @@ export function yearTotal(db, year) {
   return Math.round(sum);
 }
 
-// Éves bontás: bolti (tételek), kötelező (kimenő pénzmozgás), a kettő együtt, és bolti kp/kártya.
+// Éves bontás: bolti (tételek), kötelező (jelölt kimenő pénzmozgás), egyéb kimenő,
+// minden együtt, bolti kp/kártya és bejövő.
 export function yearTotals(db, year) {
-  let shop = 0, mandatory = 0, cash = 0, card = 0;
+  let shop = 0, mandatory = 0, other = 0, cash = 0, card = 0, income = 0;
   for (const key of Object.keys(db.months)) {
     if (!key.startsWith(year + "-")) continue;
     for (const i of db.months[key].items) {
       shop += i.price;
       if (i.payment === "cash") cash += i.price; else card += i.price;
     }
-    mandatory += db.months[key].transfers.filter(t => t.dir === "out").reduce((s, t) => s + t.amount, 0);
+    for (const t of db.months[key].transfers) {
+      if (t.dir === "out") { if (t.mandatory) mandatory += t.amount; else other += t.amount; }
+      else if (t.dir === "in") income += t.amount;
+    }
   }
-  shop = Math.round(shop); mandatory = Math.round(mandatory);
-  return { shop, mandatory, total: shop + mandatory, cash: Math.round(cash), card: Math.round(card) };
+  shop = Math.round(shop); mandatory = Math.round(mandatory); other = Math.round(other);
+  return { shop, mandatory, other, total: shop + mandatory + other, cash: Math.round(cash), card: Math.round(card), income: Math.round(income) };
 }
 
 // --- Emlékeztetők (kötelező kiadások) ---

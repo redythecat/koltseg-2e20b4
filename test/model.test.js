@@ -248,15 +248,18 @@ test("yearTotals splits shop items and mandatory (outgoing transfers) per year",
   const cat = db.categories[0].id;
   addItem(db, "2026-01", { name: "Tej", price: 500, qty: 1, categoryId: cat, date: "2026-01-10", store: "", payment: "card", note: "" });
   addItem(db, "2026-07", { name: "Sajt", price: 1500, qty: 1, categoryId: cat, date: "2026-07-10", store: "", payment: "cash", note: "" });
-  addTransfer(db, "2026-03", { dir: "out", name: "Törlesztő", amount: 50000, date: "2026-03-05", partner: "", note: "" });
+  addTransfer(db, "2026-03", { dir: "out", name: "Törlesztő", amount: 50000, date: "2026-03-05", partner: "", note: "", mandatory: true });
+  addTransfer(db, "2026-06", { dir: "out", name: "Cipő havertól", amount: 20000, date: "2026-06-05", partner: "Haver", note: "" });
   addTransfer(db, "2026-03", { dir: "in", name: "Fizetés", amount: 400000, date: "2026-03-01", partner: "", note: "" });
   addItem(db, "2025-12", { name: "Régi", price: 9999, qty: 1, categoryId: cat, date: "2025-12-10", store: "", payment: "card", note: "" });
   const yt = yearTotals(db, "2026");
   assert.equal(yt.shop, 2000);
-  assert.equal(yt.mandatory, 50000);
-  assert.equal(yt.total, 52000);
+  assert.equal(yt.mandatory, 50000); // csak a jelölt
+  assert.equal(yt.other, 20000);     // a cipő nem kötelező
+  assert.equal(yt.total, 72000);
   assert.equal(yt.cash, 1500); // Sajt kp-val
   assert.equal(yt.card, 500);  // Tej kártyával
+  assert.equal(yt.income, 400000);
 });
 
 test("swap transfers are excluded from sums and create no template", async () => {
@@ -269,7 +272,29 @@ test("swap transfers are excluded from sums and create no template", async () =>
   assert.equal(o.income, 0);
   assert.equal(o.totalExpense, 150000);
   const yt = yearTotals(db, "2026");
-  assert.equal(yt.mandatory, 150000);
+  assert.equal(yt.mandatory + yt.other, 150000);
   assert.equal(db.templates.transfers.length, 1); // csak az Albérlet, a swap nem
   assert.equal(db.templates.transfers[0].name, "Albérlet");
+});
+
+test("monthOverview splits out-transfers into mandatory and other", () => {
+  const db = createDatabase();
+  addTransfer(db, "2026-08", { dir: "out", name: "Albérlet", amount: 150000, date: "2026-08-05", partner: "", note: "", mandatory: true });
+  addTransfer(db, "2026-08", { dir: "out", name: "Cipő", amount: 20000, date: "2026-08-06", partner: "Haver", note: "" });
+  const o = monthOverview(db, "2026-08");
+  assert.equal(o.expenseOut, 170000);
+  assert.equal(o.mandatoryOut, 150000);
+  assert.equal(o.otherOut, 20000);
+});
+
+test("yearStats finds top store and biggest item across the whole year", async () => {
+  const { yearStats } = await import("../src/model.js");
+  const db = createDatabase();
+  const cat = db.categories[0].id;
+  addItem(db, "2026-01", { name: "Tej", price: 500, qty: 1, categoryId: cat, date: "2026-01-10", store: "Lidl", payment: "card", note: "" });
+  addItem(db, "2026-05", { name: "Téli gumi", price: 90000, qty: 1, categoryId: cat, date: "2026-05-10", store: "Gumis", payment: "card", note: "" });
+  addItem(db, "2026-07", { name: "Sajt", price: 1500, qty: 1, categoryId: cat, date: "2026-07-10", store: "Lidl", payment: "cash", note: "" });
+  const ys = yearStats(db, "2026");
+  assert.equal(ys.biggestItem.name, "Téli gumi");
+  assert.equal(ys.topStore.name, "Gumis");
 });
