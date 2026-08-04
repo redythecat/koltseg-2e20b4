@@ -9,26 +9,37 @@ Személyes költségkövető (telóra). Az adatok a telefonodon tárolódnak, ni
 2. Menü → „Hozzáadás a kezdőképernyőhöz".
 3. Ezután a kezdőképernyőről indul, offline is megy.
 
-## Blokk beolvasása
-1. A Claude appban fényképezd le a blokkot, kérd az import-kódot.
-2. Az appban: Beállítások → Blokk import → illeszd be a kódot → Beolvasás → nézd át → Hozzáadás.
+## Blokk bevitele
+1. Az appban: Beállítások → Blokk bevitel → „Beolvasó szöveg másolása".
+2. A Claude appban illeszd be a szöveget a blokk fotójával együtt. Válaszul egy JSON-t kapsz.
+3. A JSON-t másold vissza az appba a beviteli mezőbe → Beolvasás → nézd át (kategória állítható,
+   a tétel nevét hosszan nyomva javítható) → Hozzáadás a hónaphoz.
 
 ## Kötelező kiadások, emlékeztetők
-- Beállítások → Kötelező kiadások: vedd fel a rendszereseket (törlesztő, TB, hitel).
-- Ismétlődés (napi/heti/havi) + lejárat állítható.
+- Beállítások → Kötelező kiadások: vedd fel a rendszereseket (törlesztő, TB, hitel), kártya vagy készpénz.
+- Ismétlődés (egyszeri/napi/heti/havi) + lejárat állítható, az értesítés külön kapcsolható.
 - „Naptárba": a telefonod saját naptárába teszi, ismétlődéssel és riasztással (zárt appnál is szól).
-- „Kifizetve": kipipálod, ha rendezted (opcionálisan kimenő utalást is rögzít).
+- „Kifizetve": kipipálod, ha rendezted — felajánlja, hogy kimenő pénzmozgásként is rögzítse
+  (az így rögzített tételek magától kötelezőnek számítanak a statisztikában).
 
-## Utalások és áttekintő
-- Utalások fül: bejövő/kimenő banki tételek.
-- Áttekintő fül: bevétel / kiadás / egyenleg, kategória-bontás, készpénz vs kártya.
+## Pénzmozgás és áttekintő
+- Pénzmozgás fül: bejövő (fizetés, érkező utalás) és kimenő tételek; a kimenőnél jelölhető,
+  hogy kötelező kiadás-e. Külön lista az átvezetéseknek (készpénzfelvétel, kártyára befizetés,
+  csere valakivel) — ezek egyik összesítésbe sem számítanak bele.
+- Áttekintő fül: bevétel / kiadás / egyenleg, összehasonlítás az előző hónappal, hó végi becslés,
+  kategória-bontás, valamint Havi és Éves statisztika (összes / kötelező / egyéb / bolti, kp és kártya).
 
 ## Mentés
-- Beállítások → Export: Excelben nyitható CSV (ez a hónap vagy minden).
-- Beállítások → Backup mentése: teljes mentés egy fájlba (telócsere ellen). Visszatöltés ugyanitt.
+- Beállítások → „Biztonsági mentés fájlba": teljes mentés egy JSON-fájlba (telócsere ellen).
+  Visszatöltés: „Visszaállítás mentésből". Az app hetente magától is készít mentést a telóra.
+- Beállítások → Excel táblázat: .xlsx (ez a hónap vagy minden) — megnézésre/nyomtatásra,
+  visszaállításra nem alkalmas.
 
-## Téma
-- Beállítások → Téma: sötét / világos / rendszer szerint.
+## Kinézet
+- Beállítások: sötét / világos / rendszer szerinti téma, kiemelő szín, betűméret.
+
+## Kilépés
+- A telefon Vissza gombját kétszer megnyomva (az első után figyelmeztető üzenet jelenik meg).
 
 ---
 
@@ -36,6 +47,6 @@ Személyes költségkövető (telóra). Az adatok a telefonodon tárolódnak, ni
 
 - Statikus PWA, build-lépés nélkül (vanilla JS, ES module-ok).
 - Tesztek: `npm test` (Node beépített teszt-futtató). A tiszta üzleti logika (`src/model.js`,
-  `src/codec.js`, `src/csv.js`, `src/ics.js`) tesztelt.
+  `src/codec.js`, `src/xlsx.js`, `src/ics.js`) tesztelt.
 - Helyi futtatás: `python3 -m http.server 8000`, majd `http://localhost:8000`.
 - Terv és specifikáció: `docs/superpowers/`.

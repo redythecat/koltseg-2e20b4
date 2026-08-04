@@ -134,7 +134,7 @@ function renderMonthTotal(state, h) {
     const opt = (m, label, val) => el("button", { class: "mt-opt" + (mode === m ? " sel" : ""), onclick: () => h.onSetMonthTotalMode(m) },
       el("span", {}, label), el("span", { class: "v" }, ft(val)));
     box.append(opt("total", "Havi összes", total));
-    box.append(opt("items", "Bolti (kötelezők nélkül)", items));
+    box.append(opt("items", "Csak bolti (pénzmozgás nélkül)", items));
   }
   return box;
 }
@@ -156,7 +156,7 @@ export function renderMonthView(state, h) {
   if (!q && m.items.length === 0) {
     wrap.append(el("div", { class: "empty-hint" },
       el("strong", {}, "Még nincs tétel ebben a hónapban"),
-      el("div", { class: "muted" }, "Vedd fel az elsőt az „Új tétel” gombbal, vagy olvass be egy blokkot: Beállítások → Blokk import.")));
+      el("div", { class: "muted" }, "Vedd fel az elsőt az „Új tétel” gombbal, vagy olvass be egy blokkot: Beállítások → Blokk bevitel.")));
   }
   let shownAny = false;
   for (const c of db.categories.slice().sort((a, b) => a.order - b.order)) {
@@ -590,7 +590,7 @@ export function renderOverview(state, h) {
   if (cmp.projItems != null) {
     cmpCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Várható bolti kiadás"), el("span", { class: "muted" }, "~" + ft(cmp.projItems))));
     cmpCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Várható havi összes"), el("span", { class: "muted" }, "~" + ft(cmp.projTotal))));
-    cmpCard.append(el("p", { class: "muted", style: "margin:4px 0 0;font-size:13px" }, "A „bolti” a napi vásárlásod előrevetítve. Az „összes” ehhez hozzáadja a kötelező/utalás kiadásokat (nem felszorozva)."));
+    cmpCard.append(el("p", { class: "muted", style: "margin:4px 0 0;font-size:0.8125rem" }, "A „bolti” a napi vásárlásod előrevetítve. Az „összes” ehhez hozzáadja a kimenő pénzmozgásokat (azokat nem szorozza fel)."));
   }
   wrap.append(cmpCard);
 
@@ -663,15 +663,15 @@ export function renderOverview(state, h) {
 export function renderImportView(state, { onDecode, onConfirm, onBack, onCopyPrompt, onEditRow, onPickCat, initialCode }) {
   const { db } = state;
   const wrap = el("div", {});
-  wrap.append(el("div", { class: "topbar" }, el("h2", {}, "Blokk import"), el("button", { class: "ghost", onclick: onBack }, "Vissza")));
+  wrap.append(el("div", { class: "topbar" }, el("h2", {}, "Blokk bevitel"), el("button", { class: "ghost", onclick: onBack }, "Vissza")));
 
   const help = el("div", { class: "card" });
   help.append(el("label", {}, "1. lépés — beolvasás Claude-dal"));
-  help.append(el("p", { class: "muted", style: "margin:0 0 8px" }, "Koppints, másold ki a beolvasó szöveget, majd a Claude appban illeszd be a blokk fotójával. A kapott választ (link vagy JSON) hozd ide."));
+  help.append(el("p", { class: "muted", style: "margin:0 0 8px" }, "Koppints, másold ki a beolvasó szöveget, majd a Claude appban illeszd be a blokk fotójával. Válaszul egy JSON-t kapsz — azt hozd vissza ide."));
   if (onCopyPrompt) help.append(el("button", { class: "primary", style: "width:100%", onclick: onCopyPrompt }, "Beolvasó szöveg másolása"));
   wrap.append(help);
 
-  const ta = el("textarea", { rows: "4", placeholder: "2. lépés — illeszd be ide a Claude válaszát (link vagy JSON)" }, initialCode || "");
+  const ta = el("textarea", { rows: "4", placeholder: "2. lépés — illeszd be ide a Claude válaszát (JSON)" }, initialCode || "");
   wrap.append(el("div", { class: "card" }, ta, el("button", { class: "primary", style: "margin-top:8px;width:100%", onclick: () => onDecode(ta.value) }, "Beolvasás")));
 
   if (state.importPreview) {
@@ -803,7 +803,7 @@ export function renderRestoreView(state, h) {
 function itemsCount(db) {
   let items = 0, transfers = 0;
   for (const m of Object.values(db.months || {})) { items += (m.items || []).length; transfers += (m.transfers || []).length; }
-  return `${items} tétel · ${transfers} utalás · ${(db.reminders || []).length} emlékeztető`;
+  return `${items} tétel · ${transfers} pénzmozgás · ${(db.reminders || []).length} emlékeztető`;
 }
 
 // --- Beállítások ---
@@ -817,18 +817,19 @@ export function renderSettings(state, h) {
   // 1) Kezelés (legfelül)
   const linksCard = el("div", { class: "card" });
   linksCard.append(el("label", {}, "Kezelés"),
-    b("Hogyan használd (súgó)", h.onOpenHelp, "primary"),
+    b("Blokk bevitel", h.onOpenImportView, "primary"),
     b("Kötelező kiadások / emlékeztetők", h.onOpenReminders),
-    b("Kategóriák kezelése", h.onManageCategories),
     b("Elmentett tételek", h.onOpenTemplates),
-    b("Blokk import", h.onOpenImportView));
+    b("Kategóriák kezelése", h.onManageCategories),
+    b("Hogyan használd (súgó)", h.onOpenHelp));
   wrap.append(linksCard);
 
-  // 2) Értesítések (a Kezelés alatt)
+  // 2) Értesítések (a Kezelés alatt) — ki/be csúszka
   const notifCard = el("div", { class: "card" });
-  notifCard.append(el("div", { class: "cat-head" }, el("span", {}, "Értesítések (esedékes kötelező kiadások)"), el("span", { class: "muted" }, db.settings.notifications ? "Be" : "Ki")));
-  notifCard.append(el("button", { class: "ghost", style: "width:100%;margin-top:8px", onclick: h.onToggleNotifications }, db.settings.notifications ? "Kikapcsolás" : "Bekapcsolás"));
-  notifCard.append(el("p", { class: "muted" }, "Helyi értesítés az app nyitásakor. Zárt appnál is szóló riasztáshoz használd az emlékeztetőnél a „Naptárba” gombot."));
+  const knob = el("span", { class: "switch" + (db.settings.notifications ? " on" : "") }, el("span", { class: "knob" }));
+  notifCard.append(el("button", { class: "switch-row", onclick: h.onToggleNotifications },
+    el("span", {}, "Értesítések (esedékes kötelező kiadások)"), knob));
+  notifCard.append(el("p", { class: "muted", style: "margin:8px 0 0" }, "Helyi értesítés az app nyitásakor. Zárt appnál is szóló riasztáshoz használd az emlékeztetőnél a „Naptárba” gombot."));
   wrap.append(notifCard);
 
   // 3) Kinézet: téma, szín, betűméret

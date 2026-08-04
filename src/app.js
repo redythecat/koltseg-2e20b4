@@ -244,8 +244,8 @@ const handlers = {
     }
     commit();
   },
-  onExportMonth: () => downloadXlsx([{ name: "Kiadások", rows: expenseRows(state.db, state.month) }, { name: "Utalások", rows: transferRows(state.db, state.month) }], `koltseg-${state.month}.xlsx`),
-  onExportAll: () => downloadXlsx([{ name: "Kiadások", rows: expenseRows(state.db, null) }, { name: "Utalások", rows: transferRows(state.db, null) }], `koltseg-mind.xlsx`),
+  onExportMonth: () => downloadXlsx([{ name: "Kiadások", rows: expenseRows(state.db, state.month) }, { name: "Pénzmozgás", rows: transferRows(state.db, state.month) }], `koltseg-${state.month}.xlsx`),
+  onExportAll: () => downloadXlsx([{ name: "Kiadások", rows: expenseRows(state.db, null) }, { name: "Pénzmozgás", rows: transferRows(state.db, null) }], `koltseg-mind.xlsx`),
   onBackup: () => shareOrDownloadBackup(state.db),
   onOpenRestore: () => { state.view = "restore"; render(); },
   onRestoreFile: () => {

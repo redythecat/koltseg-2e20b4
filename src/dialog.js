@@ -46,11 +46,14 @@ export function confirmModal(message, { okText = "Igen", cancelText = "Mégse", 
 // Rövid "Hogyan használd" súgó.
 export function helpModal() {
   const sections = [
-    ["Tétel felvétele", ["„Új tétel” gombbal kézzel, vagy a Gyorslistából egy koppintással (a korábban felvett tételeidből)."]],
-    ["Blokk beolvasása", ["Beállítások → Blokk import → „Beolvasó szöveg másolása”.", "A Claude appban illeszd be a blokk fotójával; a választ (link vagy JSON) hozd vissza a „Beolvasás” mezőbe."]],
-    ["Kötelező kiadások", ["Vedd fel a rendszereseket (törlesztő, TB, hitel).", "A „Naptárba” gomb a telefon naptárába teszi, riasztással.", "A Kiadások tetején mindig látod az esedékeseket, és kipipálhatod, ha fizetted."]],
+    ["Tétel felvétele", ["„Új tétel” gombbal kézzel, vagy a Gyorslistából egy koppintással (a korábban felvett tételeidből).", "Ha megadsz darabszámot, az ár magától szorzódik az egységárral."]],
+    ["Blokk bevitele", ["Beállítások → Blokk bevitel → „Beolvasó szöveg másolása”.", "A Claude appban illeszd be a blokk fotójával. Válaszul egy JSON-t kapsz — azt másold vissza ide a beviteli mezőbe, és nyomd meg a „Beolvasás” gombot.", "Az előnézetben átállíthatod a kategóriát, és egy tétel nevét hosszan nyomva javíthatod a nevet/üzletet."]],
+    ["Elmentett tételek", ["Amit felviszel, magától bekerül a gyorslistába — Beállítások → Elmentett tételek alatt kereshető, szerkeszthető, törölhető (külön a kiadás-tételek és a pénzmozgások).", "Az elmentett ár az egységár. Ha ezt átírod, a régen felvitt kiadásaid nem változnak."]],
+    ["Kötelező kiadások", ["Vedd fel a rendszereseket (törlesztő, TB, hitel), és add meg, kártyával vagy készpénzzel fizeted.", "A „Naptárba” gomb a telefon naptárába teszi, riasztással.", "A Kiadások tetején mindig látod az esedékeseket, és kipipálhatod, ha fizetted — ilyenkor felajánlja, hogy rögzítse kimenő pénzmozgásként is."]],
     ["Havi keret", ["A kategóriánál megadhatsz havi limitet; a Kiadásoknál sáv mutatja, hol tartasz, és pirosra vált túllépéskor."]],
-    ["Utalások és Áttekintő", ["Utalások: bejövő/kimenő banki tételek.", "Áttekintő: bevétel/kiadás/egyenleg, összehasonlítás az előző hónappal, becslés és statisztika."]],
+    ["Pénzmozgás", ["Bejövő: fizetés, érkező utalások. Kimenő: albérlet, törlesztő, bármi, amit fizetsz.", "A kimenőnél pipálhatod, hogy kötelező kiadás-e. Amit a „Kifizetve” gombbal rögzítesz, az magától kötelező lesz.", "Átvezetés: készpénzfelvétel, kártyára befizetés vagy csere valakivel. Ez csak napló — egyik összesítésbe sem számít bele."]],
+    ["Áttekintő", ["Bevétel/kiadás/egyenleg, összehasonlítás az előző hónappal és hó végi becslés.", "Alul Havi és Éves statisztika: összes, kötelező, egyéb és bolti kiadás, készpénz/kártya bontással."]],
+    ["Kilépés", ["Nyomd meg kétszer a telefon Vissza gombját — az első után lent megjelenik egy üzenet, hogy véletlenül ne lépj ki."]],
     ["Mentés (fontos!)", ["Havonta egyszer: Beállítások → „Biztonsági mentés fájlba”, és tedd felhőbe/emailbe.", "Az app hetente magától is ment a telóra (Beállítások → Visszaállítás)."]],
     ["Excel", ["A Beállítások → Excel táblázat csak megnézésre/nyomtatásra való, nem visszaállításra."]],
     ["Kinézet", ["Beállításokban: sötét/világos téma, kiemelő szín, betűméret."]],

@@ -1,6 +1,13 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.22", date: "2026-08-04", notes: [
+      "Szövegek pontosítva: „Blokk import” → „Blokk bevitel”, és a beolvasásnál már nem linket ígér, hanem JSON-t (a Claude azt ad vissza).",
+      "A súgó kiegészült: elmentett tételek, pénzmozgás (kötelező/egyéb, átvezetés), kilépés dupla Vissza-gombbal.",
+      "Beállítások → Kezelés új sorrendben, az Értesítések pedig egy ki/be csúszka lett.",
+    ],
+  },
+  {
     v: "2.21", date: "2026-08-04", notes: [
       "A kimenő pénzmozgás lehet „kötelező” vagy „egyéb”: a Kifizetve gombbal rögzítettek automatikusan kötelezők, a kézzel felvitteknél pipával jelölheted. A régi, Kifizetvéből született tételeket az app magától felismeri.",
       "Havi és Éves statisztika azonos, érthető bontásban: összes / kötelező / egyéb / bolti (+kp/kártya) / bejövő — és az évesben is látszik a legtöbbet költött hely meg a legnagyobb tétel.",
