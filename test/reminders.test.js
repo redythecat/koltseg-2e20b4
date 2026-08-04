@@ -37,6 +37,12 @@ test("weekly lists matching weekdays within the month", () => {
   assert.deepEqual(occ, ["2026-08-03", "2026-08-10", "2026-08-17", "2026-08-24", "2026-08-31"]);
 });
 
+test("one-off reminder (freq none) occurs only in its start month", () => {
+  const r = rem({ freq: "none", startDate: "2026-08-14" });
+  assert.deepEqual(occurrencesInMonth(r, "2026-08"), ["2026-08-14"]);
+  assert.deepEqual(occurrencesInMonth(r, "2026-09"), []);
+});
+
 test("inactive reminder yields no occurrences", () => {
   assert.deepEqual(occurrencesInMonth(rem({ active: false }), "2026-08"), []);
 });

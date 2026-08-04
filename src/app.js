@@ -5,7 +5,7 @@ import {
   addCategory, renameCategory, deleteCategory,
   addTransfer, updateTransfer, deleteTransfer,
   addReminder, updateReminder, deleteReminder, toggleReminderPaid, remindersDueOn, daysBetween,
-  setCategoryBudget, todayKey,
+  setCategoryBudget, reorderCategories, todayKey,
 } from "./model.js";
 import { decodeImport } from "./codec.js";
 import { downloadXlsx, expenseRows, transferRows } from "./xlsx.js";
@@ -62,10 +62,11 @@ function commit() {
 
 // --- Tétel ---
 function saveItem(f) {
+  const price = Math.round(f.price); // egész forint
   const cur = state.editing.id;
-  if (cur == null) addItem(state.db, state.month, f);
+  if (cur == null) addItem(state.db, state.month, { ...f, price });
   else {
-    updateItem(state.db, state.month, cur, { name: f.name, qty: f.qty, price: f.price, store: f.store, date: f.date, payment: f.payment });
+    updateItem(state.db, state.month, cur, { name: f.name, qty: f.qty, price, store: f.store, date: f.date, payment: f.payment });
     moveItem(state.db, state.month, cur, f.categoryId);
   }
   state.editing = null; commit();
@@ -79,7 +80,7 @@ async function removeItem(id) {
 function saveTransfer(f) {
   const cur = state.editing.id;
   if (cur == null) addTransfer(state.db, state.month, f);
-  else updateTransfer(state.db, state.month, cur, { name: f.name, amount: f.amount, date: f.date, partner: f.partner, note: f.note });
+  else updateTransfer(state.db, state.month, cur, { name: f.name, amount: f.amount, date: f.date, partner: f.partner, note: f.note, method: f.method });
   state.editing = null; commit();
 }
 async function removeTransfer(id) {
@@ -216,7 +217,7 @@ const handlers = {
 };
 
 const GEAR_SVG = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>';
-const TABS = [["month", "Kiadások"], ["transfers", "Utalások"], ["overview", "Áttekintő"], ["settings", "Beállítások"]];
+const TABS = [["month", "Kiadások"], ["transfers", "Pénzmozgás"], ["overview", "Áttekintő"], ["settings", "Beállítások"]];
 function renderTabbar() {
   const bar = document.getElementById("tabbar");
   if (state.navHidden) {
@@ -260,6 +261,7 @@ function render() {
     root.append(renderCategoryManager(state, {
       onAdd: (n) => { addCategory(state.db, n); commit(); },
       onSave: (id, n, budget) => { if (n) renameCategory(state.db, id, n); setCategoryBudget(state.db, id, budget); commit(); },
+      onReorder: (order) => { reorderCategories(state.db, order); commit(); },
       onDelete: onDeleteCategory,
       onBack: () => { state.view = "settings"; render(); },
     }));
@@ -293,7 +295,7 @@ function render() {
 (function notifyDueToday() {
   if (!state.db.settings.notifications) return;
   if (!("Notification" in window) || Notification.permission !== "granted") return;
-  const due = remindersDueOn(state.db, todayKey());
+  const due = remindersDueOn(state.db, todayKey()).filter(r => r.notify !== false);
   for (const r of due) new Notification("Ma esedékes", { body: r.name + (r.amount != null && r.amount !== "" ? ` – ${r.amount} Ft` : ""), tag: "koltseg-" + r.id });
 })();
 

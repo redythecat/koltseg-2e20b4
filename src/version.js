@@ -1,6 +1,14 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.4", date: "2026-08-04", notes: [
+      "Kötelező kiadás: az ismétlődés lehet „Egyszeri”, és az értesítés külön ki/be kapcsolható.",
+      "„Utalások” → „Pénzmozgás”: megadható, hogy készpénz vagy utalás.",
+      "Kategóriák sorrendje átrendezhető: a fogantyút (≡) tartsd nyomva, majd húzd.",
+      "Darabszámos tételnél a gyorslista az egységárat jegyzi meg (felfelé kerekítve); a tényleges kiadás pontos marad.",
+    ],
+  },
+  {
     v: "2.3", date: "2026-08-03", notes: [
       "Törlésnél megerősítést kér (tétel, utalás, emlékeztető) — véletlen ellen.",
       "Üres-állapot súgó, ha még nincs tétel a hónapban.",

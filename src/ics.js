@@ -14,9 +14,11 @@ export function reminderToIcs(rem) {
     `DTSTART:${stamp(rem.startDate, rem.notifyTime)}`,
     `SUMMARY:${esc(rem.name + (rem.amount ? ` – ${rem.amount} Ft` : ""))}`,
   ];
-  let rrule = `RRULE:FREQ=${FREQ[rem.freq] || "MONTHLY"};INTERVAL=${Math.max(1, rem.interval || 1)}`;
-  if (rem.until) rrule += `;UNTIL=${rem.until.replaceAll("-", "")}T235900Z`;
-  lines.push(rrule);
+  if (rem.freq && rem.freq !== "none") {
+    let rrule = `RRULE:FREQ=${FREQ[rem.freq] || "MONTHLY"};INTERVAL=${Math.max(1, rem.interval || 1)}`;
+    if (rem.until) rrule += `;UNTIL=${rem.until.replaceAll("-", "")}T235900Z`;
+    lines.push(rrule);
+  }
   if (rem.note) lines.push(`DESCRIPTION:${esc(rem.note)}`);
   lines.push("BEGIN:VALARM", "ACTION:DISPLAY", `DESCRIPTION:${esc(rem.name)}`, "TRIGGER:PT0S", "END:VALARM");
   lines.push("END:VEVENT", "END:VCALENDAR");

@@ -30,14 +30,17 @@ export function ensureMonth(db, monthKey) {
 // --- Tétel-CRUD ---
 
 function upsertItemTemplate(db, item) {
+  // A sablonba az EGYSÉGÁR kerül (összeg ÷ darabszám), egész forintra felfelé kerekítve.
+  // A tényleges kiadás (item.price = a sor összege) marad az igazság; sosem ebből számoljuk vissza.
+  const unit = Math.ceil(item.price / Math.max(1, item.qty || 1));
   let t = db.templates.items.find(x => x.name === item.name && x.categoryId === item.categoryId);
   if (!t) {
-    t = { name: item.name, store: item.store, categoryId: item.categoryId, lastPrice: item.price, lastQty: item.qty, payment: item.payment };
+    t = { name: item.name, store: item.store, categoryId: item.categoryId, lastPrice: unit, lastQty: 1, payment: item.payment };
     db.templates.items.push(t);
   } else {
     t.store = item.store;
-    t.lastPrice = item.price;
-    t.lastQty = item.qty;
+    t.lastPrice = unit;
+    t.lastQty = 1;
     t.payment = item.payment;
   }
 }
@@ -84,6 +87,13 @@ export function renameCategory(db, categoryId, name) {
 export function setCategoryBudget(db, categoryId, budget) {
   const c = db.categories.find(x => x.id === categoryId);
   if (c) c.budget = (budget === "" || budget == null || !(budget > 0)) ? null : Math.round(budget);
+  return db;
+}
+
+// Kategóriák sorrendje egy id-lista alapján.
+export function reorderCategories(db, idOrder) {
+  idOrder.forEach((id, i) => { const c = db.categories.find(x => x.id === id); if (c) c.order = i; });
+  db.categories.sort((a, b) => a.order - b.order);
   return db;
 }
 
@@ -196,6 +206,10 @@ export function occurrencesInMonth(rem, monthKey) {
   if (start > mEnd) return [];
   if (until && until < mStart) return [];
   const out = [];
+  if (rem.freq === "none") {
+    if (start >= mStart && start <= mEnd) out.push(ymd(start));
+    return out;
+  }
   if (rem.freq === "monthly") {
     const diff = (mStart.getUTCFullYear() - start.getUTCFullYear()) * 12 + (mStart.getUTCMonth() - start.getUTCMonth());
     if (diff >= 0 && diff % interval === 0) {

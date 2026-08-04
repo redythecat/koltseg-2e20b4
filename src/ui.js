@@ -87,7 +87,7 @@ export function findCategoryIdByName(db, name) {
   return c ? c.id : null;
 }
 
-const FREQ_LABEL = { daily: "napi", weekly: "heti", monthly: "havi" };
+const FREQ_LABEL = { none: "egyszeri", daily: "napi", weekly: "heti", monthly: "havi" };
 
 // --- Hónap nézet ---
 
@@ -194,12 +194,53 @@ export function renderItemForm(state, { item, onSave, onDelete, onCancel }) {
 
 // --- Kategória-kezelő ---
 
-export function renderCategoryManager(state, { onAdd, onSave, onDelete, onBack }) {
+function setupCategoryDrag(handle, card, list, onReorder) {
+  let timer = null, activated = false, startY = 0;
+  const cleanup = () => {
+    if (timer) { clearTimeout(timer); timer = null; }
+    if (activated) { card.classList.remove("dragging"); activated = false; }
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", onUp);
+    window.removeEventListener("pointercancel", onUp);
+  };
+  const activate = () => { activated = true; card.classList.add("dragging"); };
+  const onMove = (e) => {
+    if (!activated) { if (Math.abs(e.clientY - startY) > 12) cleanup(); return; }
+    e.preventDefault();
+    const others = [...list.querySelectorAll(".cat-card")].filter(x => x !== card);
+    let after = null;
+    for (const other of others) {
+      const r = other.getBoundingClientRect();
+      if (e.clientY < r.top + r.height / 2) { after = other; break; }
+    }
+    if (after == null) { if (list.lastElementChild !== card) list.appendChild(card); }
+    else if (after !== card.nextElementSibling) list.insertBefore(card, after);
+  };
+  const onUp = () => {
+    const wasActive = activated;
+    cleanup();
+    if (wasActive) onReorder([...list.querySelectorAll(".cat-card")].map(x => x.getAttribute("data-id")));
+  };
+  handle.addEventListener("pointerdown", (e) => {
+    startY = e.clientY;
+    window.addEventListener("pointermove", onMove, { passive: false });
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    timer = setTimeout(activate, 450);
+  });
+}
+
+export function renderCategoryManager(state, { onAdd, onSave, onDelete, onBack, onReorder }) {
   const { db } = state;
   const wrap = el("div", {});
   wrap.append(el("div", { class: "topbar" }, el("h2", {}, "Kategóriák"), el("button", { class: "ghost", onclick: onBack }, "Kész")));
+  wrap.append(el("p", { class: "muted", style: "margin-top:0" }, "Sorrend: a fogantyút (≡) tartsd nyomva, majd húzd a kategóriát fel/le."));
+  const list = el("div", { id: "cat-list" });
   for (const c of db.categories.slice().sort((a, b) => a.order - b.order)) {
-    const card = el("div", { class: "card" });
+    const card = el("div", { class: "card cat-card", "data-id": c.id });
+    const handle = el("div", { class: "drag-handle", "aria-label": "Áthelyezés – tartsd nyomva és húzd" }, "≡");
+    setupCategoryDrag(handle, card, list, onReorder);
+    card.append(handle);
     const nameInput = el("input", { value: c.name });
     const budgetInput = el("input", { type: "number", inputmode: "numeric", min: "0", value: c.budget ?? "", placeholder: "nincs" });
     card.append(el("div", { class: "row" },
@@ -209,8 +250,9 @@ export function renderCategoryManager(state, { onAdd, onSave, onDelete, onBack }
     actions.append(el("button", { class: "primary", onclick: () => onSave(c.id, nameInput.value.trim(), budgetInput.value === "" ? null : Number(budgetInput.value)) }, "Mentés"));
     actions.append(el("button", { class: "ghost", style: "color:var(--neg)", onclick: () => onDelete(c) }, "Törlés"));
     card.append(actions);
-    wrap.append(card);
+    list.append(card);
   }
+  wrap.append(list);
   const nc = el("input", { placeholder: "Új kategória neve" });
   wrap.append(el("div", { class: "card" }, el("label", {}, "Új kategória"), nc,
     el("button", { class: "primary", style: "margin-top:8px;width:100%", onclick: () => { if (nc.value.trim()) onAdd(nc.value.trim()); } }, "Hozzáadás")));
@@ -224,7 +266,7 @@ export function renderTransfersView(state, h) {
   const { db, month } = state;
   const m = db.months[month] || { items: [], transfers: [] };
   const wrap = el("div", {});
-  wrap.append(el("h2", { style: "margin-bottom:10px" }, "Utalások"));
+  wrap.append(el("h2", { style: "margin-bottom:10px" }, "Pénzmozgás"));
   wrap.append(el("div", { style: "margin-bottom:12px" }, renderMonthNav(state, h)));
   for (const [dir, title] of [["in", "Bejövő"], ["out", "Kimenő"]]) {
     const list = m.transfers.filter(t => t.dir === dir);
@@ -238,7 +280,7 @@ export function renderTransfersView(state, h) {
     if (open) {
       for (const t of list) {
         card.append(el("div", { class: "item", onclick: () => h.onEditTransfer(t.id) },
-          el("div", {}, el("div", {}, t.name), el("small", {}, `${t.date || "—"} · ${t.partner || "—"}`)),
+          el("div", {}, el("div", {}, t.name), el("small", {}, `${t.date || "—"} · ${t.method === "cash" ? "kp" : "utalás"} · ${t.partner || "—"}`)),
           el("div", { class: dir === "in" ? "pos" : "neg" }, (dir === "in" ? "+" : "−") + ft(t.amount))));
       }
       if (!list.length) card.append(el("div", { class: "item muted" }, "Nincs tétel"));
@@ -250,13 +292,17 @@ export function renderTransfersView(state, h) {
 }
 
 export function renderTransferForm(state, { transfer, dir, onSave, onDelete, onCancel }) {
-  const v = transfer || { dir, name: "", amount: "", date: todayKey(), partner: "", note: "" };
+  const v = transfer || { dir, name: "", amount: "", date: todayKey(), partner: "", note: "", method: "transfer" };
   const f = { ...v };
+  if (!f.method) f.method = "transfer";
   const wrap = el("div", { class: "card" });
-  wrap.append(el("h2", {}, transfer ? "Utalás szerkesztése" : (f.dir === "in" ? "Új bejövő" : "Új kimenő")));
+  wrap.append(el("h2", {}, transfer ? "Pénzmozgás szerkesztése" : (f.dir === "in" ? "Új bevétel" : "Új kiadás")));
   const inName = el("input", { value: f.name, oninput: e => f.name = e.target.value, placeholder: "Megnevezés" });
   const inAmt = el("input", { type: "number", inputmode: "numeric", min: "0", value: f.amount, oninput: e => f.amount = Number(e.target.value), placeholder: "Összeg (Ft)" });
   const inDate = el("input", { type: "date", value: f.date, oninput: e => f.date = e.target.value });
+  const selMethod = el("select", { onchange: e => f.method = e.target.value },
+    el("option", { value: "transfer", ...(f.method === "transfer" ? { selected: "" } : {}) }, "Utalás"),
+    el("option", { value: "cash", ...(f.method === "cash" ? { selected: "" } : {}) }, "Készpénz"));
   const inPartner = el("input", { value: f.partner, oninput: e => f.partner = e.target.value, placeholder: f.dir === "in" ? "Kitől" : "Kinek" });
   const inNote = el("input", { value: f.note, oninput: e => f.note = e.target.value, placeholder: "Megjegyzés" });
 
@@ -273,7 +319,7 @@ export function renderTransferForm(state, { transfer, dir, onSave, onDelete, onC
   }
   wrap.append(el("label", {}, "Megnevezés"), inName);
   wrap.append(el("div", { class: "row" }, el("div", {}, el("label", {}, "Összeg (Ft)"), inAmt), el("div", {}, el("label", {}, "Dátum"), inDate)));
-  wrap.append(el("label", {}, f.dir === "in" ? "Kitől" : "Kinek"), inPartner);
+  wrap.append(el("div", { class: "row" }, el("div", {}, el("label", {}, "Mód"), selMethod), el("div", {}, el("label", {}, f.dir === "in" ? "Kitől" : "Kinek"), inPartner)));
   wrap.append(el("label", {}, "Megjegyzés"), inNote);
   const actions = el("div", { class: "row", style: "margin-top:12px" });
   actions.append(el("button", { class: "primary", onclick: () => { if (!f.name || !(f.amount >= 0)) { toast("Megnevezés és összeg kötelező."); return; } onSave(f); } }, "Mentés"));
@@ -321,7 +367,7 @@ export function renderOverview(state, h) {
   pay.append(el("h3", {}, "Bolti fizetés módja"));
   pay.append(el("div", { class: "cat-head" }, el("span", {}, "Készpénz"), el("span", { class: "muted" }, ft(o.cash))));
   pay.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Kártya"), el("span", { class: "muted" }, ft(o.card))));
-  pay.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Kimenő utalás"), el("span", { class: "muted" }, ft(o.expenseOut))));
+  pay.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Kimenő pénzmozgás"), el("span", { class: "muted" }, ft(o.expenseOut))));
   wrap.append(pay);
 
   const stats = monthStats(state.db, state.month);
@@ -393,15 +439,16 @@ export function renderImportView(state, { onDecode, onConfirm, onBack, onCopyPro
 // --- Emlékeztetők ---
 
 export function renderReminderForm(state, { reminder, onSave, onDelete, onCancel }) {
-  const v = reminder || { name: "", amount: "", note: "", active: true, freq: "monthly", interval: 1, startDate: todayKey(), until: "", notifyTime: "09:00" };
+  const v = reminder || { name: "", amount: "", note: "", active: true, freq: "monthly", interval: 1, startDate: todayKey(), until: "", notify: true, notifyTime: "09:00" };
   const f = { ...v };
+  if (f.notify === undefined) f.notify = true;
   const wrap = el("div", { class: "card" });
   wrap.append(el("h2", {}, reminder ? "Emlékeztető szerkesztése" : "Új emlékeztető"));
   const inName = el("input", { value: f.name, oninput: e => f.name = e.target.value, placeholder: "Név (pl. Törlesztő)" });
   const inAmount = el("input", { type: "number", inputmode: "numeric", min: "0", value: f.amount ?? "", oninput: e => f.amount = e.target.value === "" ? null : Number(e.target.value), placeholder: "Összeg (opcionális)" });
   const inNote = el("input", { value: f.note, oninput: e => f.note = e.target.value, placeholder: "Megjegyzés" });
-  const selFreq = el("select", { onchange: e => f.freq = e.target.value },
-    ...[["monthly", "havi"], ["weekly", "heti"], ["daily", "napi"]].map(([val, lab]) => el("option", { value: val, ...(f.freq === val ? { selected: "" } : {}) }, lab)));
+  const selFreq = el("select", { onchange: e => { f.freq = e.target.value; repBox.style.display = f.freq === "none" ? "none" : ""; } },
+    ...[["none", "Egyszeri (nem ismétlődik)"], ["monthly", "Havonta"], ["weekly", "Hetente"], ["daily", "Naponta"]].map(([val, lab]) => el("option", { value: val, ...(f.freq === val ? { selected: "" } : {}) }, lab)));
   const inInterval = el("input", { type: "number", inputmode: "numeric", min: "1", value: f.interval, oninput: e => f.interval = Math.max(1, Number(e.target.value) || 1) });
   const inStart = el("input", { type: "date", value: f.startDate, oninput: e => f.startDate = e.target.value });
   const inUntil = el("input", { type: "date", value: f.until || "", oninput: e => f.until = e.target.value || null });
@@ -409,13 +456,19 @@ export function renderReminderForm(state, { reminder, onSave, onDelete, onCancel
   const inActive = el("select", { onchange: e => f.active = e.target.value === "yes" },
     el("option", { value: "yes", ...(f.active ? { selected: "" } : {}) }, "Aktív"),
     el("option", { value: "no", ...(!f.active ? { selected: "" } : {}) }, "Kikapcsolva"));
+  const cbNotify = el("input", { type: "checkbox", ...(f.notify ? { checked: "" } : {}), onchange: e => { f.notify = e.target.checked; timeBox.style.display = f.notify ? "" : "none"; } });
 
   wrap.append(el("label", {}, "Név"), inName);
   wrap.append(el("div", { class: "row" }, el("div", {}, el("label", {}, "Összeg (opcionális)"), inAmount), el("div", {}, el("label", {}, "Állapot"), inActive)));
   wrap.append(el("label", {}, "Megjegyzés"), inNote);
-  wrap.append(el("div", { class: "row" }, el("div", {}, el("label", {}, "Ismétlődés"), selFreq), el("div", {}, el("label", {}, "Gyakoriság (pl. 2 = kéthavonta)"), inInterval)));
-  wrap.append(el("div", { class: "row" }, el("div", {}, el("label", {}, "Kezdő dátum"), inStart), el("div", {}, el("label", {}, "Lejárat (opcionális)"), inUntil)));
-  wrap.append(el("label", {}, "Értesítés ideje"), inTime);
+  wrap.append(el("div", { class: "row" }, el("div", {}, el("label", {}, "Ismétlődés"), selFreq), el("div", {}, el("label", {}, "Kezdő dátum"), inStart)));
+  const repBox = el("div", { class: "row", style: f.freq === "none" ? "display:none" : "" },
+    el("div", {}, el("label", {}, "Gyakoriság (pl. 2 = kéthavonta)"), inInterval),
+    el("div", {}, el("label", {}, "Lejárat (opcionális)"), inUntil));
+  wrap.append(repBox);
+  wrap.append(el("label", { style: "display:flex;align-items:center;gap:10px;margin-top:10px;color:var(--fg)" }, cbNotify, el("span", {}, "Értesítést kérek (a nap reggelén)")));
+  const timeBox = el("div", { style: f.notify ? "" : "display:none" }, el("label", {}, "Értesítés ideje"), inTime);
+  wrap.append(timeBox);
 
   const actions = el("div", { class: "row", style: "margin-top:12px" });
   actions.append(el("button", { class: "primary", onclick: () => { if (!f.name) { toast("Név kötelező."); return; } onSave(f); } }, "Mentés"));

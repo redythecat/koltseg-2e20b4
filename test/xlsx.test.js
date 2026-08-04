@@ -26,7 +26,8 @@ test("transferRows renders direction in Hungarian with numeric amount", () => {
   addTransfer(db, "2026-08", { dir: "in", name: "Fizetés", amount: 400000, date: "2026-08-01", partner: "Munka", note: "" });
   const rows = transferRows(db, "2026-08");
   assert.equal(rows[1][2], "Bejövő");
-  assert.equal(rows[1][4], 400000);
+  assert.equal(rows[1][3], "Utalás"); // Mód (alap: utalás)
+  assert.equal(rows[1][5], 400000);
 });
 
 test("buildXlsxBytes returns a ZIP (PK header) with content", () => {

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   createDatabase, ensureMonth, DEFAULT_CATEGORIES, genId,
   addItem, updateItem, moveItem, deleteItem,
-  addCategory, renameCategory, deleteCategory,
+  addCategory, renameCategory, deleteCategory, reorderCategories,
   addTransfer, updateTransfer, deleteTransfer,
   categoryTotal, monthOverview, monthComparison, setCategoryBudget,
 } from "../src/model.js";
@@ -58,8 +58,8 @@ test("addItem upserts a template keyed by name+categoryId", () => {
   addItem(db, "2026-08", { name: "Tej", qty: 3, price: 900, store: "Aldi", date: "2026-08-04", payment: "card", categoryId: catId(db) });
   const tpls = db.templates.items.filter(t => t.name === "Tej");
   assert.equal(tpls.length, 1);
-  assert.equal(tpls[0].lastPrice, 900);
-  assert.equal(tpls[0].lastQty, 3);
+  assert.equal(tpls[0].lastPrice, 300); // egységár: ceil(900/3)
+  assert.equal(tpls[0].lastQty, 1);
   assert.equal(tpls[0].store, "Aldi");
 });
 
@@ -119,6 +119,25 @@ test("deleteCategory without reassign deletes its items", () => {
   deleteCategory(db, from, null);
   assert.ok(!db.categories.find(c => c.id === from));
   assert.equal(db.months["2026-08"].items.length, 0);
+});
+
+test("reorderCategories sets order from an id list", () => {
+  const db = createDatabase();
+  const ids = db.categories.map(c => c.id);
+  const newOrder = [ids[2], ids[0], ids[1], ids[3], ids[4]];
+  reorderCategories(db, newOrder);
+  assert.deepEqual(db.categories.map(c => c.id), newOrder);
+  assert.deepEqual(db.categories.map(c => c.order), [0, 1, 2, 3, 4]);
+});
+
+test("item template stores unit price rounded up, qty reset to 1", () => {
+  const db = baseDb();
+  addItem(db, "2026-08", { name: "Tej", qty: 3, price: 1000, store: "Lidl", date: "2026-08-03", payment: "cash", categoryId: catId(db) });
+  const t = db.templates.items.find(x => x.name === "Tej");
+  assert.equal(t.lastPrice, 334); // ceil(1000/3)
+  assert.equal(t.lastQty, 1);
+  // a tényleges tétel ára marad a sor összege
+  assert.equal(db.months["2026-08"].items[0].price, 1000);
 });
 
 test("addTransfer stores and upserts template", () => {

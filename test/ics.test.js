@@ -16,6 +16,13 @@ test("ics contains calendar, event, rrule, summary and alarm", () => {
   assert.ok(s.includes("\r\n"));
 });
 
+test("one-off reminder (freq none) has no RRULE", () => {
+  const s = reminderToIcs({ ...base, freq: "none" });
+  assert.ok(!/RRULE/.test(s));
+  assert.match(s, /BEGIN:VEVENT/);
+  assert.match(s, /BEGIN:VALARM/);
+});
+
 test("weekly with until encodes UNTIL, and no-amount omits price", () => {
   const s = reminderToIcs({ ...base, freq: "weekly", interval: 2, until: "2026-12-31", amount: null });
   assert.match(s, /RRULE:FREQ=WEEKLY;INTERVAL=2;UNTIL=20261231T235900Z/);
