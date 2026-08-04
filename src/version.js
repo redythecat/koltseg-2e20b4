@@ -1,6 +1,13 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.24", date: "2026-08-04", notes: [
+      "Az elmentett tétel és pénzmozgás szerkesztése felugró ablakban nyílik (nem külön oldalon).",
+      "A telefon Vissza gombja most bezárja a nyitott ablakot.",
+      "Beállítások legalján „Frissítés keresése” gomb — így nem kell találgatni, megjött-e az új verzió.",
+    ],
+  },
+  {
     v: "2.23", date: "2026-08-04", notes: [
       "Minden felugró ablak (súgó, verzió-napló, kérdések, szerkesztők) jobb felső sarkában bezáró X — a hosszú, görgethető ablakokban is végig látszik.",
       "Kategória törlése két lépésben: előbb csak az áthelyezés / tételek törlése / mégse, és csak áthelyezésnél jön elő a kategória-választó (sok kategóriánál is átlátható).",

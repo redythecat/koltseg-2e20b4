@@ -21,6 +21,24 @@ function closeX(box, onClose) {
   return b;
 }
 
+// Tetszőleges tartalmú felugró ablak (pl. kis szerkesztő űrlapok).
+// A visszakapott függvénnyel bezárható; a Vissza-gomb is ezt hívja (ov.__dismiss).
+export function panelModal(title, node, onClose) {
+  const ov = overlay();
+  const box = document.createElement("div");
+  box.className = "modal panel";
+  const h = document.createElement("h3");
+  h.textContent = title;
+  h.style.margin = "0 0 12px";
+  box.append(h, node);
+  const dismiss = () => { close(ov); if (onClose) onClose(); };
+  closeX(box, dismiss);
+  ov.onclick = (e) => { if (e.target === ov) dismiss(); };
+  ov.__dismiss = dismiss;
+  ov.append(box);
+  return () => close(ov);   // bezárás visszahívás nélkül (pl. mentés után)
+}
+
 export function toast(message) {
   const t = document.createElement("div");
   t.className = "toast";

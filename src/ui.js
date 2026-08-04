@@ -392,8 +392,7 @@ export function renderTemplatesManager(state, h) {
 
 export function renderTransferTemplateForm(state, { template, onSave, onDelete, onCancel }) {
   const f = { name: template.name, partner: template.partner || "", lastAmount: template.lastAmount ?? "", dir: template.dir };
-  const wrap = el("div", { class: "card" });
-  wrap.append(el("h2", {}, "Elmentett pénzmozgás szerkesztése"));
+  const wrap = el("div", {});
   const inName = el("input", { value: f.name, oninput: e => f.name = e.target.value, placeholder: "Megnevezés" });
   const inPartner = el("input", { value: f.partner, oninput: e => f.partner = e.target.value, placeholder: "Partner" });
   const inAmount = el("input", { type: "number", inputmode: "numeric", min: "0", value: f.lastAmount, oninput: e => f.lastAmount = Number(e.target.value), placeholder: "Összeg (Ft)" });
@@ -414,8 +413,7 @@ export function renderTransferTemplateForm(state, { template, onSave, onDelete, 
 export function renderTemplateForm(state, { template, onSave, onDelete, onCancel }) {
   const { db } = state;
   const f = { name: template.name, store: template.store || "", lastPrice: template.lastPrice ?? "", categoryId: template.categoryId, payment: template.payment || "card" };
-  const wrap = el("div", { class: "card" });
-  wrap.append(el("h2", {}, "Elmentett tétel szerkesztése"));
+  const wrap = el("div", {});
   const inName = el("input", { value: f.name, oninput: e => f.name = e.target.value, placeholder: "Név" });
   const inStore = el("input", { value: f.store, oninput: e => f.store = e.target.value, placeholder: "Üzlet" });
   const inPrice = el("input", { type: "number", inputmode: "numeric", min: "0", value: f.lastPrice, oninput: e => f.lastPrice = Number(e.target.value), placeholder: "Egységár (Ft)" });
@@ -882,6 +880,7 @@ export function renderSettings(state, h) {
   verCard.append(el("button", { class: "ver-box", onclick: h.onShowChangelog },
     el("span", { class: "v" }, `Verzió ${APP_VERSION} · ${APP_DATE}`),
     el("span", { class: "go" }, "Mi újult meg? →")));
+  verCard.append(el("button", { class: "ghost", style: "width:100%;margin-top:8px", onclick: h.onCheckUpdate }, "Frissítés keresése"));
   wrap.append(verCard);
   return wrap;
 }
