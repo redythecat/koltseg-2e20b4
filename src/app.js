@@ -355,8 +355,11 @@ if (didAutoBackup) {
 // és csak a főképernyőn kérdez rá a kilépésre.
 (function setupBackGuard() {
   const SETTINGS_SUB = ["categories", "import", "restore", "templates", "reminders"];
-  const guard = () => history.pushState({ guard: true }, "");
-  guard();
+  // Az őr-állapotot mindig KIS KÉSLELTETÉSSEL rakjuk vissza — a popstate ALATTI azonnali
+  // pushState egyes böngészőkben nem hoz létre megbízhatóan új előre-lépést, ezért a
+  // következő vissza kilépett. A setTimeout(0) ezt megbízhatóvá teszi.
+  const reguard = () => setTimeout(() => { try { history.pushState({ guard: true }, ""); } catch { /* noop */ } }, 0);
+  try { history.pushState({ guard: true }, ""); } catch { /* noop */ }
   let asking = false;
   function handleInternalBack() {
     if (document.querySelector(".modal-overlay")) return true; // nyitott ablak: a vissza elnyeli
@@ -365,15 +368,15 @@ if (didAutoBackup) {
     if (state.view !== "month") { state.view = "month"; render(); return true; }
     return false;
   }
-  window.addEventListener("popstate", async () => {
-    if (handleInternalBack()) { guard(); return; }
-    if (asking) { guard(); return; }
+  window.addEventListener("popstate", () => {
+    if (handleInternalBack()) { reguard(); return; }
+    if (asking) { reguard(); return; }
     asking = true;
-    guard(); // visszaállítjuk az őrt (invariáns: mindig van egy őr-állapot a tetején)
-    const yes = await confirmModal("Biztos kilépsz az appból?", { okText: "Kilépés", cancelText: "Maradok" });
-    asking = false;
-    if (yes) history.go(-2); // ténylegesen kilép (az őr + a belépő állapot mögé)
-    // "Maradok" esetén nincs teendő: az őr már a helyén van
+    reguard();
+    confirmModal("Biztos kilépsz az appból?", { okText: "Kilépés", cancelText: "Maradok" }).then(yes => {
+      asking = false;
+      if (yes) history.go(-2); // ténylegesen kilép (az őr + a belépő állapot mögé)
+    });
   });
 })();
 
