@@ -1,6 +1,11 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.13", date: "2026-08-04", notes: [
+      "A vissza-gomb nem léptet ki véletlenül: először bezárja a megnyitott űrlapot/ablakot, vagy visszalép az appon belül, és csak a főképernyőn kérdez rá: „Biztos kilépsz?”.",
+    ],
+  },
+  {
     v: "2.12", date: "2026-08-04", notes: [
       "Blokk import előnézet fejlécében a nap is látszik (pl. „2026. augusztus 04.”), ha a tételek egy dátumhoz tartoznak.",
     ],

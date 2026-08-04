@@ -351,6 +351,32 @@ if (didAutoBackup) {
     .then(yes => { if (yes) shareOrDownloadBackup(state.db); });
 }
 
+// Vissza-gomb kezelése: ne lépj ki véletlenül. Először bezár/visszalép az appon belül,
+// és csak a főképernyőn kérdez rá a kilépésre.
+(function setupBackGuard() {
+  const SETTINGS_SUB = ["categories", "import", "restore", "templates", "reminders"];
+  const guard = () => history.pushState({ guard: true }, "");
+  guard();
+  let asking = false;
+  function handleInternalBack() {
+    if (document.querySelector(".modal-overlay")) return true; // nyitott ablak: a vissza elnyeli
+    if (state.editing) { state.editing = null; render(); return true; }
+    if (SETTINGS_SUB.includes(state.view)) { state.view = "settings"; render(); return true; }
+    if (state.view !== "month") { state.view = "month"; render(); return true; }
+    return false;
+  }
+  window.addEventListener("popstate", async () => {
+    if (handleInternalBack()) { guard(); return; }
+    if (asking) { guard(); return; }
+    asking = true;
+    guard(); // visszaállítjuk az őrt (invariáns: mindig van egy őr-állapot a tetején)
+    const yes = await confirmModal("Biztos kilépsz az appból?", { okText: "Kilépés", cancelText: "Maradok" });
+    asking = false;
+    if (yes) history.go(-2); // ténylegesen kilép (az őr + a belépő állapot mögé)
+    // "Maradok" esetén nincs teendő: az őr már a helyén van
+  });
+})();
+
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js").catch(() => {});
   let refreshing = false;
