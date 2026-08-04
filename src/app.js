@@ -48,6 +48,7 @@ const state = {
   navHidden: false,
   search: "",
   tplSearch: "",
+  monthTotalOpen: false,
 };
 
 applyTheme(state.db.settings.theme);
@@ -164,6 +165,8 @@ const handlers = {
   onAddTransfer: (dir) => { state.editing = { type: "transfer", id: null, dir }; render(); },
   onEditTransfer: (id) => { state.editing = { type: "transfer", id }; render(); },
   onManageCategories: () => { state.view = "categories"; render(); },
+  onToggleMonthTotal: () => { state.monthTotalOpen = !state.monthTotalOpen; render(); },
+  onSetMonthTotalMode: (m) => { state.db.settings.monthTotalMode = m; state.monthTotalOpen = false; commit(); },
   onOpenTemplates: () => { state.view = "templates"; state.tplSearch = ""; render(); },
   onTplSearch: (v) => {
     state.tplSearch = v;

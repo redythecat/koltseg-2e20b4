@@ -38,6 +38,16 @@ button.ghost { background: transparent; }
   border-radius: var(--radius); padding: 0.875rem 1rem; margin-bottom: 0.75rem; }
 .month-total .mt-label { color: var(--muted); font-weight: 600; font-size: 0.9375rem; }
 .month-total .mt-amount { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.01em; }
+.month-total.stack { display: block; padding: 0; }
+.month-total .mt-head { display: flex; justify-content: space-between; align-items: center; width: 100%;
+  background: transparent; border: none; padding: 0.875rem 1rem; min-height: 0; }
+.month-total .mt-head .right { display: flex; align-items: center; gap: 0.6rem; }
+.month-total .chev-sm { color: var(--muted); font-size: 1rem; }
+.month-total .mt-opt { display: flex; justify-content: space-between; align-items: center; width: 100%;
+  background: transparent; border: none; border-top: 1px solid color-mix(in srgb, var(--accent) 25%, var(--line));
+  padding: 0.7rem 1rem; color: var(--muted); font-size: 0.95rem; }
+.month-total .mt-opt.sel { color: var(--fg); font-weight: 700; }
+.month-total .mt-opt .v { font-weight: 700; }
 .tabbar { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 0.375rem; padding: 0.5rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom));
   background: var(--card); border-top: 1px solid var(--line); box-shadow: 0 -6px 24px rgba(0,0,0,0.18); }
 .tabbar-inner { display: flex; gap: 0.25rem; width: 100%; max-width: 40rem; margin: 0 auto; }

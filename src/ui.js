@@ -101,6 +101,29 @@ const FREQ_LABEL = { none: "egyszeri", daily: "napi", weekly: "heti", monthly: "
 
 // --- Hónap nézet ---
 
+function renderMonthTotal(state, h) {
+  const o = monthOverview(state.db, state.month);
+  const total = o.totalExpense, items = o.expenseItems;
+  if (o.expenseOut <= 0) {
+    return el("div", { class: "month-total" }, el("span", { class: "mt-label" }, "Havi kiadás"), el("span", { class: "mt-amount" }, ft(total)));
+  }
+  const mode = state.db.settings.monthTotalMode === "items" ? "items" : "total";
+  const primaryVal = mode === "items" ? items : total;
+  const primaryLabel = mode === "items" ? "Bolti kiadás" : "Havi összes";
+  const open = state.monthTotalOpen;
+  const box = el("div", { class: "month-total stack" });
+  box.append(el("button", { class: "mt-head", onclick: h.onToggleMonthTotal },
+    el("span", { class: "mt-label" }, primaryLabel),
+    el("span", { class: "right" }, el("span", { class: "mt-amount" }, ft(primaryVal)), el("span", { class: "chev-sm" }, open ? "▾" : "▸"))));
+  if (open) {
+    const opt = (m, label, val) => el("button", { class: "mt-opt" + (mode === m ? " sel" : ""), onclick: () => h.onSetMonthTotalMode(m) },
+      el("span", {}, label), el("span", { class: "v" }, ft(val)));
+    box.append(opt("total", "Havi összes", total));
+    box.append(opt("items", "Bolti (kötelezők nélkül)", items));
+  }
+  return box;
+}
+
 export function renderMonthView(state, h) {
   const { db, month } = state;
   const wrap = el("div");
@@ -112,7 +135,7 @@ export function renderMonthView(state, h) {
   const q = (state.search || "").trim().toLowerCase();
   wrap.append(el("input", { id: "kiadas-search", value: state.search || "", placeholder: "Keresés (név vagy üzlet)", oninput: e => h.onSearchInput(e.target.value), style: "margin:10px 0 8px" }));
   wrap.append(el("button", { class: "primary", onclick: h.onAddItem, style: "width:100%;margin:0 0 10px" }, "Új tétel"));
-  wrap.append(el("div", { class: "month-total" }, el("span", { class: "mt-label" }, "Havi kiadás"), el("span", { class: "mt-amount" }, ft(monthOverview(db, month).totalExpense))));
+  wrap.append(renderMonthTotal(state, h));
 
   const m = db.months[month] || { items: [], transfers: [] };
   if (!q && m.items.length === 0) {
@@ -366,6 +389,17 @@ export function renderTransfersView(state, h) {
   const wrap = el("div", {});
   wrap.append(el("h2", { style: "margin-bottom:10px" }, "Pénzmozgás"));
   wrap.append(el("div", { style: "margin-bottom:12px" }, renderMonthNav(state, h)));
+
+  const sumIn = m.transfers.filter(t => t.dir === "in").reduce((s, t) => s + t.amount, 0);
+  const sumOut = m.transfers.filter(t => t.dir === "out").reduce((s, t) => s + t.amount, 0);
+  const bal = sumIn - sumOut;
+  const sumCard = el("div", { class: "month-total", style: "flex-direction:column;align-items:stretch;gap:6px" });
+  sumCard.append(el("div", { class: "cat-head" }, el("span", { class: "mt-label" }, "Egyenleg"),
+    el("span", { class: "mt-amount", style: bal >= 0 ? "color:var(--pos)" : "color:var(--neg)" }, (bal >= 0 ? "+" : "−") + ft(Math.abs(bal)))));
+  sumCard.append(el("div", { class: "cat-head" }, el("span", { class: "muted" }, "Bejövő"), el("span", { class: "pos" }, "+" + ft(sumIn))));
+  sumCard.append(el("div", { class: "cat-head" }, el("span", { class: "muted" }, "Kimenő"), el("span", { class: "neg" }, "−" + ft(sumOut))));
+  wrap.append(sumCard);
+
   for (const [dir, title] of [["in", "Bejövő"], ["out", "Kimenő"]]) {
     const list = m.transfers.filter(t => t.dir === dir);
     const sum = list.reduce((s, t) => s + t.amount, 0);

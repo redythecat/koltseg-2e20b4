@@ -1,6 +1,12 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.9", date: "2026-08-04", notes: [
+      "Kiadások tetején a havi összeg lenyitható: válaszd ki, a „Havi összes” vagy a „Bolti (kötelezők nélkül)” szám legyen az elsődleges. Ha nincs kötelező/utalás, csak egy szám van.",
+      "Pénzmozgás tetején egyenleg: bejövő − kimenő, kiemelve.",
+    ],
+  },
+  {
     v: "2.8", date: "2026-08-04", notes: [
       "Áttekintő becslés kettévált: „Várható bolti kiadás” (a napi vásárlás előrevetítve) és „Várható havi összes” (a kötelező/utalás kiadásokkal, azok nem felszorozva).",
     ],
