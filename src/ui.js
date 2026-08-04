@@ -393,12 +393,9 @@ export function renderTransfersView(state, h) {
   const sumIn = m.transfers.filter(t => t.dir === "in").reduce((s, t) => s + t.amount, 0);
   const sumOut = m.transfers.filter(t => t.dir === "out").reduce((s, t) => s + t.amount, 0);
   const bal = sumIn - sumOut;
-  const sumCard = el("div", { class: "month-total", style: "flex-direction:column;align-items:stretch;gap:6px" });
-  sumCard.append(el("div", { class: "cat-head" }, el("span", { class: "mt-label" }, "Egyenleg"),
+  wrap.append(el("div", { class: "month-total" },
+    el("span", { class: "mt-label" }, "Egyenleg"),
     el("span", { class: "mt-amount", style: bal >= 0 ? "color:var(--pos)" : "color:var(--neg)" }, (bal >= 0 ? "+" : "−") + ft(Math.abs(bal)))));
-  sumCard.append(el("div", { class: "cat-head" }, el("span", { class: "muted" }, "Bejövő"), el("span", { class: "pos" }, "+" + ft(sumIn))));
-  sumCard.append(el("div", { class: "cat-head" }, el("span", { class: "muted" }, "Kimenő"), el("span", { class: "neg" }, "−" + ft(sumOut))));
-  wrap.append(sumCard);
 
   for (const [dir, title] of [["in", "Bejövő"], ["out", "Kimenő"]]) {
     const list = m.transfers.filter(t => t.dir === dir);
