@@ -1,8 +1,8 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
-    v: "2.14", date: "2026-08-04", notes: [
-      "A vissza-gomb mélyebb nézetekből is végig helyesen lép vissza (pl. elmentett tétel szerkesztő → lista → Beállítások → Kiadások), és csak a főképernyőn kérdez rá: „Biztos kilépsz?”.",
+    v: "2.15", date: "2026-08-04", notes: [
+      "Vissza-gomb újraírva, megbízhatóbban: bármelyik fülről és bármilyen mélységből helyesen lép vissza (pl. szerkesztő → lista → Beállítások), és a főképernyőn rákérdez: „Biztos kilépsz?”.",
     ],
   },
   {

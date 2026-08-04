@@ -279,6 +279,44 @@ function renderTabbar() {
   bar.replaceChildren(inner);
 }
 
+// --- Vissza-gomb kezelése: a history-mélységet a nézet-mélységhez szinkronizáljuk. ---
+// A history-bejegyzéseket NAVIGÁLÁSKOR (render után) rakjuk fel/le, ami minden böngészőben
+// megbízható; a vissza-esemény alatt csak a kilépéshez teszünk egy őrt.
+const SETTINGS_SUB = ["categories", "import", "restore", "templates", "reminders"];
+let histEntries = 0, suppressPop = 0, askingExit = false;
+function appDepth() {
+  let d = 0;
+  if (SETTINGS_SUB.includes(state.view)) d++; // alnézet a Beállítások alatt
+  if (state.editing) d++;                      // nyitott űrlap
+  return d;
+}
+function syncBackHistory() {
+  if (askingExit) return;
+  const target = appDepth() + 1; // +1 az alap-őr (a főképernyőn: vissza -> kilépés-kérdés)
+  while (histEntries < target) { history.pushState({ g: ++histEntries }, ""); }
+  if (histEntries > target) {
+    const over = histEntries - target;
+    histEntries = target;
+    suppressPop++;
+    history.go(-over);
+  }
+}
+window.addEventListener("popstate", () => {
+  if (suppressPop > 0) { suppressPop--; return; }
+  histEntries = Math.max(0, histEntries - 1);
+  if (document.querySelector(".modal-overlay")) { history.pushState({ g: ++histEntries }, ""); return; } // ablak nyitva: elnyeli
+  if (state.editing) { state.editing = null; render(); return; }           // űrlap bezárása
+  if (SETTINGS_SUB.includes(state.view)) { state.view = "settings"; render(); return; } // alnézet -> Beállítások
+  // Főképernyő (bármelyik fül): rákérdezünk a kilépésre.
+  askingExit = true;
+  history.pushState({ g: ++histEntries }, "");
+  confirmModal("Biztos kilépsz az appból?", { okText: "Kilépés", cancelText: "Maradok" }).then(yes => {
+    askingExit = false;
+    if (yes) { suppressPop += 1; history.go(-2); }
+    else syncBackHistory();
+  });
+});
+
 function render() {
   const root = document.getElementById("app");
   root.replaceChildren();
@@ -321,6 +359,7 @@ function render() {
     root.append(renderMonthView(state, handlers));
   }
   renderTabbar();
+  syncBackHistory();
 }
 
 // Import induláskor linkből: ?import=<kód> vagy #import=<kód>
@@ -351,34 +390,6 @@ if (didAutoBackup) {
     .then(yes => { if (yes) shareOrDownloadBackup(state.db); });
 }
 
-// Vissza-gomb kezelése: ne lépj ki véletlenül. Először bezár/visszalép az appon belül,
-// és csak a főképernyőn kérdez rá a kilépésre.
-(function setupBackGuard() {
-  const SETTINGS_SUB = ["categories", "import", "restore", "templates", "reminders"];
-  // Az őr-állapotot mindig KIS KÉSLELTETÉSSEL rakjuk vissza — a popstate ALATTI azonnali
-  // pushState egyes böngészőkben nem hoz létre megbízhatóan új előre-lépést, ezért a
-  // következő vissza kilépett. A setTimeout(0) ezt megbízhatóvá teszi.
-  const reguard = () => setTimeout(() => { try { history.pushState({ guard: true }, ""); } catch { /* noop */ } }, 0);
-  try { history.pushState({ guard: true }, ""); } catch { /* noop */ }
-  let asking = false;
-  function handleInternalBack() {
-    if (document.querySelector(".modal-overlay")) return true; // nyitott ablak: a vissza elnyeli
-    if (state.editing) { state.editing = null; render(); return true; }
-    if (SETTINGS_SUB.includes(state.view)) { state.view = "settings"; render(); return true; }
-    if (state.view !== "month") { state.view = "month"; render(); return true; }
-    return false;
-  }
-  window.addEventListener("popstate", () => {
-    if (handleInternalBack()) { reguard(); return; }
-    if (asking) { reguard(); return; }
-    asking = true;
-    reguard();
-    confirmModal("Biztos kilépsz az appból?", { okText: "Kilépés", cancelText: "Maradok" }).then(yes => {
-      asking = false;
-      if (yes) history.go(-2); // ténylegesen kilép (az őr + a belépő állapot mögé)
-    });
-  });
-})();
 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js").catch(() => {});
