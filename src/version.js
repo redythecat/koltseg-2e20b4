@@ -1,6 +1,12 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.10", date: "2026-08-04", notes: [
+      "Blokk import előnézet: „Összesen: X Ft” a beolvasott tételekről — egyeztethető a blokk végösszegével.",
+      "Kereső a Pénzmozgásnál is (megnevezés vagy partner szerint).",
+    ],
+  },
+  {
     v: "2.9", date: "2026-08-04", notes: [
       "Kiadások tetején a havi összeg lenyitható: válaszd ki, a „Havi összes” vagy a „Bolti (kötelezők nélkül)” szám legyen az elsődleges. Ha nincs kötelező/utalás, csak egy szám van.",
     ],

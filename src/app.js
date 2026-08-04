@@ -48,6 +48,7 @@ const state = {
   navHidden: false,
   search: "",
   tplSearch: "",
+  transferSearch: "",
   monthTotalOpen: false,
 };
 
@@ -164,6 +165,12 @@ const handlers = {
   onEditItem: (id) => { state.editing = { type: "item", id }; render(); },
   onAddTransfer: (dir) => { state.editing = { type: "transfer", id: null, dir }; render(); },
   onEditTransfer: (id) => { state.editing = { type: "transfer", id }; render(); },
+  onTransferSearch: (v) => {
+    state.transferSearch = v;
+    render();
+    const si = document.getElementById("pm-search");
+    if (si) { si.focus(); const n = si.value.length; try { si.setSelectionRange(n, n); } catch { /* noop */ } }
+  },
   onManageCategories: () => { state.view = "categories"; render(); },
   onToggleMonthTotal: () => { state.monthTotalOpen = !state.monthTotalOpen; render(); },
   onSetMonthTotalMode: (m) => { state.db.settings.monthTotalMode = m; state.monthTotalOpen = false; commit(); },

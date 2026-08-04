@@ -390,11 +390,16 @@ export function renderTransfersView(state, h) {
   wrap.append(el("h2", { style: "margin-bottom:10px" }, "Pénzmozgás"));
   wrap.append(el("div", { style: "margin-bottom:12px" }, renderMonthNav(state, h)));
 
+  const q = (state.transferSearch || "").trim().toLowerCase();
+  wrap.append(el("input", { id: "pm-search", value: state.transferSearch || "", placeholder: "Keresés (megnevezés vagy partner)", oninput: e => h.onTransferSearch(e.target.value), style: "margin-bottom:12px" }));
+
   for (const [dir, title] of [["in", "Bejövő"], ["out", "Kimenő"]]) {
-    const list = m.transfers.filter(t => t.dir === dir);
-    const sum = list.reduce((s, t) => s + t.amount, 0);
+    const all = m.transfers.filter(t => t.dir === dir);
+    const sum = all.reduce((s, t) => s + t.amount, 0);
+    const list = q ? all.filter(t => (t.name + " " + (t.partner || "")).toLowerCase().includes(q)) : all;
+    if (q && !list.length) continue;
     const key = "tr:" + dir;
-    const open = !isCollapsed(state, key);
+    const open = q ? true : !isCollapsed(state, key);
     const card = el("div", { class: "card" });
     card.append(el("button", { class: "collapse-head", onclick: () => h.onToggleCollapse(key) },
       el("span", { class: "left" }, chev(open), el("span", { class: "sec-title" }, title)),
@@ -556,6 +561,8 @@ export function renderImportView(state, { onDecode, onConfirm, onBack, onCopyPro
         el("div", {}, nameEl, el("small", {}, `${r.qty} db · ${r.store || "—"} · ${r.payment === "cash" ? "kp" : "kártya"}`)),
         sel));
     });
+    const total = p.rows.reduce((s, r) => s + (Number(r.price) || 0), 0);
+    box.append(el("div", { class: "cat-head", style: "margin-top:10px;font-weight:800;font-size:1.05rem" }, el("span", {}, "Összesen"), el("span", {}, ft(total))));
     box.append(el("button", { class: "primary", style: "margin-top:8px;width:100%", onclick: onConfirm }, "Hozzáadás a hónaphoz"));
     wrap.append(box);
   }
