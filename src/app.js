@@ -10,7 +10,7 @@ import {
 import { decodeImport } from "./codec.js";
 import { downloadXlsx, expenseRows, transferRows } from "./xlsx.js";
 import { reminderToIcs } from "./ics.js";
-import { toast, confirmModal, choiceModal, changelogModal, helpModal } from "./dialog.js";
+import { toast, confirmModal, choiceModal, changelogModal, helpModal, formModal } from "./dialog.js";
 import { CHANGELOG } from "./version.js";
 import {
   el, shiftMonth, findCategoryIdByName,
@@ -195,6 +195,12 @@ const handlers = {
     }
   },
   onAddToCalendar: (r) => downloadText(`${r.name}.ics`, reminderToIcs(r), "text/calendar;charset=utf-8"),
+  onEditImportRow: async (i) => {
+    const r = state.importPreview && state.importPreview.rows[i];
+    if (!r) return;
+    const res = await formModal("Tétel javítása", [{ key: "name", label: "Név", value: r.name }, { key: "store", label: "Üzlet", value: r.store || "" }]);
+    if (res) { if (res.name.trim()) r.name = res.name.trim(); r.store = res.store.trim(); render(); }
+  },
   onOpenImport: (code) => { state.view = "import"; state.importCode = code || ""; state.importPreview = null; render(); },
   onOpenImportView: () => handlers.onOpenImport(""),
   onCopyImportPrompt: async () => {
@@ -289,7 +295,7 @@ function render() {
       onBack: () => { state.view = "settings"; render(); },
     }));
   } else if (state.view === "import") {
-    root.append(renderImportView(state, { initialCode: state.importCode, onDecode: decodeToPreview, onConfirm: confirmImport, onCopyPrompt: handlers.onCopyImportPrompt, onBack: () => { state.view = "settings"; render(); } }));
+    root.append(renderImportView(state, { initialCode: state.importCode, onDecode: decodeToPreview, onConfirm: confirmImport, onCopyPrompt: handlers.onCopyImportPrompt, onEditRow: handlers.onEditImportRow, onBack: () => { state.view = "settings"; render(); } }));
   } else if (state.view === "restore") {
     root.append(renderRestoreView(state, { onRestoreSnapshot: handlers.onRestoreSnapshot, onRestoreFile: handlers.onRestoreFile, onBack: handlers.onBackFromRestore }));
   } else if (state.view === "settings") {

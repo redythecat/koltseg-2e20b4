@@ -82,6 +82,16 @@ export function el(tag, attrs = {}, ...kids) {
   return n;
 }
 
+export function attachLongPress(node, cb) {
+  let timer = null, sx = 0, sy = 0;
+  const clear = () => { if (timer) { clearTimeout(timer); timer = null; } };
+  node.addEventListener("pointerdown", (e) => { sx = e.clientX; sy = e.clientY; timer = setTimeout(() => { timer = null; cb(); }, 500); });
+  node.addEventListener("pointermove", (e) => { if (timer && (Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10)) clear(); });
+  node.addEventListener("pointerup", clear);
+  node.addEventListener("pointercancel", clear);
+  node.addEventListener("pointerleave", clear);
+}
+
 export function findCategoryIdByName(db, name) {
   const c = db.categories.find(x => x.name.toLowerCase() === String(name || "").toLowerCase());
   return c ? c.id : null;
@@ -494,7 +504,7 @@ export function renderOverview(state, h) {
 
 // --- Import ---
 
-export function renderImportView(state, { onDecode, onConfirm, onBack, onCopyPrompt, initialCode }) {
+export function renderImportView(state, { onDecode, onConfirm, onBack, onCopyPrompt, onEditRow, initialCode }) {
   const { db } = state;
   const wrap = el("div", {});
   wrap.append(el("div", { class: "topbar" }, el("h2", {}, "Blokk import"), el("button", { class: "ghost", onclick: onBack }, "Vissza")));
@@ -512,10 +522,13 @@ export function renderImportView(state, { onDecode, onConfirm, onBack, onCopyPro
     const p = state.importPreview;
     const box = el("div", { class: "card" });
     box.append(el("h3", {}, `${p.rows.length} tétel — ${monthLabel(p.month)}`));
-    p.rows.forEach((r) => {
+    box.append(el("p", { class: "muted", style: "margin:0 0 8px" }, "Tipp: tartsd nyomva egy tétel nevét a név/üzlet javításához."));
+    p.rows.forEach((r, idx) => {
       const sel = el("select", { onchange: e => r.categoryId = e.target.value }, ...db.categories.map(c => el("option", { value: c.id, ...(c.id === r.categoryId ? { selected: "" } : {}) }, c.name)));
+      const nameEl = el("div", { class: "editable-name" }, `${r.name} — ${ft(r.price)}`);
+      if (onEditRow) attachLongPress(nameEl, () => onEditRow(idx));
       box.append(el("div", { class: "item" },
-        el("div", {}, el("div", {}, `${r.name} — ${ft(r.price)}`), el("small", {}, `${r.qty} db · ${r.store || "—"} · ${r.payment === "cash" ? "kp" : "kártya"}`)),
+        el("div", {}, nameEl, el("small", {}, `${r.qty} db · ${r.store || "—"} · ${r.payment === "cash" ? "kp" : "kártya"}`)),
         sel));
     });
     box.append(el("button", { class: "primary", style: "margin-top:8px;width:100%", onclick: onConfirm }, "Hozzáadás a hónaphoz"));

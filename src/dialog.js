@@ -86,6 +86,44 @@ export function helpModal() {
   ov.append(box);
 }
 
+// Kis szerkesztő ablak. fields: [{ key, label, value }] -> Promise<{...}|null>
+export function formModal(title, fields) {
+  return new Promise((resolve) => {
+    const ov = overlay();
+    const box = document.createElement("div");
+    box.className = "modal";
+    const h = document.createElement("h3");
+    h.textContent = title;
+    h.style.margin = "0 0 12px";
+    box.append(h);
+    const inputs = {};
+    for (const fld of fields) {
+      const lab = document.createElement("label");
+      lab.textContent = fld.label;
+      const inp = document.createElement("input");
+      inp.value = fld.value == null ? "" : fld.value;
+      inputs[fld.key] = inp;
+      box.append(lab, inp);
+    }
+    const row = document.createElement("div");
+    row.className = "modal-actions";
+    row.style.marginTop = "14px";
+    const ok = document.createElement("button");
+    ok.className = "primary";
+    ok.textContent = "Mentés";
+    const cancel = document.createElement("button");
+    cancel.className = "ghost";
+    cancel.textContent = "Mégse";
+    ok.onclick = () => { const out = {}; for (const k of Object.keys(inputs)) out[k] = inputs[k].value; close(ov); resolve(out); };
+    cancel.onclick = () => { close(ov); resolve(null); };
+    ov.onclick = (e) => { if (e.target === ov) { close(ov); resolve(null); } };
+    row.append(cancel, ok);
+    box.append(row);
+    ov.append(box);
+    setTimeout(() => { const first = inputs[fields[0]?.key]; if (first) first.focus(); }, 30);
+  });
+}
+
 // Verzió-napló ablak. entries: [{ v, date, notes: [...] }]
 // 20 soronként tölt be (egy bejegyzés fejléce + pontjai = sorok), hogy ne terhelje az eszközt.
 const CHANGELOG_PAGE_ROWS = 20;

@@ -1,6 +1,11 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.7", date: "2026-08-04", notes: [
+      "Blokk import előnézet: egy tétel nevét hosszan nyomva javíthatod a nevet és az üzletet (ha a blokk félreolvasta).",
+    ],
+  },
+  {
     v: "2.6", date: "2026-08-04", notes: [
       "Új tételnél a darabszám állításakor az ár automatikusan szorzódik az egységárral (ha kézzel átírod az árat, abból újraszámol).",
     ],
