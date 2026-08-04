@@ -303,17 +303,18 @@ function syncBackHistory() {
 }
 window.addEventListener("popstate", () => {
   if (suppressPop > 0) { suppressPop--; return; }
+  if (askingExit) return; // a kilépés-kérdés nyitva; a belépő-pontról a vissza úgyis kilép
   histEntries = Math.max(0, histEntries - 1);
   if (document.querySelector(".modal-overlay")) { history.pushState({ g: ++histEntries }, ""); return; } // ablak nyitva: elnyeli
   if (state.editing) { state.editing = null; render(); return; }           // űrlap bezárása
   if (SETTINGS_SUB.includes(state.view)) { state.view = "settings"; render(); return; } // alnézet -> Beállítások
-  // Főképernyő (bármelyik fül): rákérdezünk a kilépésre.
+  // Főképernyő: most a belépő-ponton vagyunk (őr elfogyott). NEM rakunk vissza őrt, így a
+  // „Kilépés" egy sima history.back()-kel valóban kilép; a „Maradok" újra felrakja az őrt.
   askingExit = true;
-  history.pushState({ g: ++histEntries }, "");
   confirmModal("Biztos kilépsz az appból?", { okText: "Kilépés", cancelText: "Maradok" }).then(yes => {
     askingExit = false;
-    if (yes) { suppressPop += 1; history.go(-2); }
-    else syncBackHistory();
+    if (yes) { histEntries = 0; history.back(); }
+    else history.pushState({ g: ++histEntries }, "");
   });
 });
 

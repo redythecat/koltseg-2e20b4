@@ -1,6 +1,11 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.16", date: "2026-08-04", notes: [
+      "A kilépés-kérdésnél a „Kilépés” most valóban bezárja az appot (megbízhatóbb módon).",
+    ],
+  },
+  {
     v: "2.15", date: "2026-08-04", notes: [
       "Vissza-gomb újraírva, megbízhatóbban: bármelyik fülről és bármilyen mélységből helyesen lép vissza (pl. szerkesztő → lista → Beállítások), és a főképernyőn rákérdez: „Biztos kilépsz?”.",
     ],
