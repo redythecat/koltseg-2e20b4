@@ -1,6 +1,14 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.17", date: "2026-08-04", notes: [
+      "A kilépés-kérdés „Kilépés” gombja telepített appban is bezárja az appot (eddig csak az ablakot csukta be).",
+      "Elmentett tételeknél mostantól a pénzmozgás-gyorslista is szerkeszthető/törölhető (Beállítások → Kezelés).",
+      "Statisztika: éves összes / kötelező / bolti kiadás külön sorban, és ide került a havi kimenő + bejövő pénzmozgás is.",
+      "Kötelező kiadásnál megadható a fizetés módja (kártya vagy készpénz).",
+    ],
+  },
+  {
     v: "2.16", date: "2026-08-04", notes: [
       "A kilépés-kérdésnél a „Kilépés” most valóban bezárja az appot (megbízhatóbb módon).",
     ],

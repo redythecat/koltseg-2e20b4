@@ -126,8 +126,19 @@ export function deleteCategory(db, categoryId, reassignToId) {
 
 function upsertTransferTemplate(db, t) {
   let tpl = db.templates.transfers.find(x => x.dir === t.dir && x.name === t.name);
-  if (!tpl) db.templates.transfers.push({ dir: t.dir, name: t.name, partner: t.partner, lastAmount: t.amount });
+  if (!tpl) db.templates.transfers.push({ id: genId("ttpl"), dir: t.dir, name: t.name, partner: t.partner, lastAmount: t.amount });
   else { tpl.partner = t.partner; tpl.lastAmount = t.amount; }
+}
+
+export function deleteTransferTemplate(db, id) {
+  db.templates.transfers = db.templates.transfers.filter(t => t.id !== id);
+  return db;
+}
+
+export function updateTransferTemplate(db, id, patch) {
+  const t = db.templates.transfers.find(x => x.id === id);
+  if (t) Object.assign(t, patch);
+  return db;
 }
 
 export function addTransfer(db, monthKey, t) {
@@ -200,6 +211,18 @@ export function yearTotal(db, year) {
     if (key.startsWith(year + "-")) sum += db.months[key].items.reduce((s, i) => s + i.price, 0);
   }
   return Math.round(sum);
+}
+
+// Éves bontás: bolti (tételek), kötelező (kimenő pénzmozgás) és a kettő együtt.
+export function yearTotals(db, year) {
+  let shop = 0, mandatory = 0;
+  for (const key of Object.keys(db.months)) {
+    if (!key.startsWith(year + "-")) continue;
+    shop += db.months[key].items.reduce((s, i) => s + i.price, 0);
+    mandatory += db.months[key].transfers.filter(t => t.dir === "out").reduce((s, t) => s + t.amount, 0);
+  }
+  shop = Math.round(shop); mandatory = Math.round(mandatory);
+  return { shop, mandatory, total: shop + mandatory };
 }
 
 // --- Emlékeztetők (kötelező kiadások) ---

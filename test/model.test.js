@@ -228,3 +228,31 @@ test("monthOverview on empty month is all zeros", () => {
   assert.equal(o.balance, 0);
   assert.equal(o.byCategory.every(x => x.sum === 0 && x.share === 0), true);
 });
+
+test("transfer templates get ids and can be updated/deleted", async () => {
+  const { deleteTransferTemplate, updateTransferTemplate } = await import("../src/model.js");
+  const db = createDatabase();
+  addTransfer(db, "2026-08", { dir: "out", name: "Albérlet", amount: 150000, date: "2026-08-05", partner: "Főbérlő", note: "" });
+  const tpl = db.templates.transfers.find(x => x.name === "Albérlet");
+  assert.ok(tpl.id && tpl.id.startsWith("ttpl"));
+  updateTransferTemplate(db, tpl.id, { name: "Lakbér", lastAmount: 160000, partner: "Új főbérlő", dir: "out" });
+  assert.equal(db.templates.transfers[0].name, "Lakbér");
+  assert.equal(db.templates.transfers[0].lastAmount, 160000);
+  deleteTransferTemplate(db, tpl.id);
+  assert.equal(db.templates.transfers.length, 0);
+});
+
+test("yearTotals splits shop items and mandatory (outgoing transfers) per year", async () => {
+  const { yearTotals } = await import("../src/model.js");
+  const db = createDatabase();
+  const cat = db.categories[0].id;
+  addItem(db, "2026-01", { name: "Tej", price: 500, qty: 1, categoryId: cat, date: "2026-01-10", store: "", payment: "card", note: "" });
+  addItem(db, "2026-07", { name: "Sajt", price: 1500, qty: 1, categoryId: cat, date: "2026-07-10", store: "", payment: "cash", note: "" });
+  addTransfer(db, "2026-03", { dir: "out", name: "Törlesztő", amount: 50000, date: "2026-03-05", partner: "", note: "" });
+  addTransfer(db, "2026-03", { dir: "in", name: "Fizetés", amount: 400000, date: "2026-03-01", partner: "", note: "" });
+  addItem(db, "2025-12", { name: "Régi", price: 9999, qty: 1, categoryId: cat, date: "2025-12-10", store: "", payment: "card", note: "" });
+  const yt = yearTotals(db, "2026");
+  assert.equal(yt.shop, 2000);
+  assert.equal(yt.mandatory, 50000);
+  assert.equal(yt.total, 52000);
+});

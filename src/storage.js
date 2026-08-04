@@ -17,6 +17,7 @@ export function load() {
     if (!db.settings.collapsed) db.settings.collapsed = {};
     if (!db.settings.fontScale) db.settings.fontScale = "normal";
     if (db.templates && Array.isArray(db.templates.items)) for (const t of db.templates.items) if (!t.id) t.id = genId("tpl");
+    if (db.templates && Array.isArray(db.templates.transfers)) for (const t of db.templates.transfers) if (!t.id) t.id = genId("ttpl");
     return db;
   } catch {
     return createDatabase();
@@ -110,6 +111,7 @@ export function readBackupFile(file) {
         if (!db.settings.collapsed) db.settings.collapsed = {};
         if (!db.settings.fontScale) db.settings.fontScale = "normal";
         if (db.templates && Array.isArray(db.templates.items)) for (const t of db.templates.items) if (!t.id) t.id = genId("tpl");
+        if (db.templates && Array.isArray(db.templates.transfers)) for (const t of db.templates.transfers) if (!t.id) t.id = genId("ttpl");
         resolve(db);
       } catch {
         reject(new Error("Érvénytelen backup fájl."));

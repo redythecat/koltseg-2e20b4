@@ -6,6 +6,7 @@ import {
   addTransfer, updateTransfer, deleteTransfer,
   addReminder, updateReminder, deleteReminder, toggleReminderPaid, remindersDueOn, daysBetween,
   setCategoryBudget, reorderCategories, deleteItemTemplate, updateItemTemplate, todayKey,
+  deleteTransferTemplate, updateTransferTemplate,
 } from "./model.js";
 import { decodeImport } from "./codec.js";
 import { downloadXlsx, expenseRows, transferRows } from "./xlsx.js";
@@ -17,7 +18,7 @@ import {
   renderMonthView, renderItemForm, renderCategoryManager,
   renderTransfersView, renderTransferForm, renderOverview,
   renderImportView, renderRemindersView, renderReminderForm, renderSettings, renderRestoreView,
-  renderTemplatesManager, renderTemplateForm,
+  renderTemplatesManager, renderTemplateForm, renderTransferTemplateForm,
 } from "./ui.js";
 
 function currentMonthKey() {
@@ -122,6 +123,11 @@ async function removeTemplate(t) {
   if (!(await confirmModal(`Törlöd a(z) "${t.name}" mentett tételt?`, { okText: "Törlés", cancelText: "Mégse", danger: true }))) return;
   deleteItemTemplate(state.db, t.id); state.editing = null; commit();
 }
+function saveTransferTemplate(id, patch) { updateTransferTemplate(state.db, id, patch); state.editing = null; commit(); }
+async function removeTransferTemplate(t) {
+  if (!(await confirmModal(`Törlöd a(z) "${t.name}" mentett pénzmozgást?`, { okText: "Törlés", cancelText: "Mégse", danger: true }))) return;
+  deleteTransferTemplate(state.db, t.id); state.editing = null; commit();
+}
 
 // --- Import ---
 function extractPayload(input) {
@@ -183,6 +189,8 @@ const handlers = {
   },
   onEditTemplate: (id) => { state.editing = { type: "template", id }; render(); },
   onDeleteTemplate: (t) => removeTemplate(t),
+  onEditTransferTemplate: (id) => { state.editing = { type: "ttemplate", id }; render(); },
+  onDeleteTransferTemplate: (t) => removeTransferTemplate(t),
   onSearchInput: (v) => {
     state.search = v;
     render();
@@ -309,14 +317,28 @@ window.addEventListener("popstate", () => {
   if (state.editing) { state.editing = null; render(); return; }           // űrlap bezárása
   if (SETTINGS_SUB.includes(state.view)) { state.view = "settings"; render(); return; } // alnézet -> Beállítások
   // Főképernyő: most a belépő-ponton vagyunk (őr elfogyott). NEM rakunk vissza őrt, így a
-  // „Kilépés" egy sima history.back()-kel valóban kilép; a „Maradok" újra felrakja az őrt.
+  // „Maradok" újra felrakja, a „Kilépés" pedig ténylegesen bezár (lásd exitApp).
   askingExit = true;
   confirmModal("Biztos kilépsz az appból?", { okText: "Kilépés", cancelText: "Maradok" }).then(yes => {
     askingExit = false;
-    if (yes) { histEntries = 0; history.back(); }
+    if (yes) exitApp();
     else history.pushState({ g: ++histEntries }, "");
   });
 });
+// Telepített appban az app a LEGELSŐ history-bejegyzés, ezért a history.back() ott nem lép
+// sehová (némán elnyelődik). Egy-dokumentumos ablakot viszont a window.close() bezárhat.
+// Böngésző-fülben fordítva: a close() tiltott, de a back() elvisz az előző oldalra.
+// Ha egyik sem hat, az őr leszedve marad: a következő Vissza-gomb natívan kilép.
+function exitApp() {
+  histEntries = 0;
+  window.close();
+  setTimeout(() => {
+    history.back();
+    setTimeout(() => {
+      if (!document.hidden) toast("Nyomd meg a Vissza gombot a kilépéshez.");
+    }, 400);
+  }, 150);
+}
 
 function render() {
   const root = document.getElementById("app");
@@ -334,8 +356,11 @@ function render() {
   } else if (state.editing?.type === "template" && state.db.templates.items.find(x => x.id === state.editing.id)) {
     const t = state.db.templates.items.find(x => x.id === state.editing.id);
     root.append(renderTemplateForm(state, { template: t, onSave: saveTemplate, onDelete: removeTemplate, onCancel: () => { state.editing = null; render(); } }));
+  } else if (state.editing?.type === "ttemplate" && state.db.templates.transfers.find(x => x.id === state.editing.id)) {
+    const t = state.db.templates.transfers.find(x => x.id === state.editing.id);
+    root.append(renderTransferTemplateForm(state, { template: t, onSave: saveTransferTemplate, onDelete: removeTransferTemplate, onCancel: () => { state.editing = null; render(); } }));
   } else if (state.view === "templates") {
-    root.append(renderTemplatesManager(state, { onTplSearch: handlers.onTplSearch, onEditTemplate: handlers.onEditTemplate, onDeleteTemplate: handlers.onDeleteTemplate, onBack: () => { state.editing = null; state.view = "settings"; render(); } }));
+    root.append(renderTemplatesManager(state, { onTplSearch: handlers.onTplSearch, onEditTemplate: handlers.onEditTemplate, onDeleteTemplate: handlers.onDeleteTemplate, onEditTransferTemplate: handlers.onEditTransferTemplate, onDeleteTransferTemplate: handlers.onDeleteTransferTemplate, onBack: () => { state.editing = null; state.view = "settings"; render(); } }));
   } else if (state.view === "transfers") {
     root.append(renderTransfersView(state, handlers));
   } else if (state.view === "overview") {
