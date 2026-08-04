@@ -152,8 +152,16 @@ export function renderItemForm(state, { item, onSave, onDelete, onCancel }) {
   wrap.append(el("h2", {}, item ? "Tétel szerkesztése" : "Új tétel"));
 
   const inName = el("input", { value: f.name, oninput: e => f.name = e.target.value, placeholder: "Név" });
-  const inQty = el("input", { type: "number", inputmode: "numeric", min: "0", value: f.qty, oninput: e => f.qty = Number(e.target.value) });
-  const inPrice = el("input", { type: "number", inputmode: "numeric", min: "0", value: f.price, oninput: e => f.price = Number(e.target.value), placeholder: "Ár (Ft)" });
+  // Egységár nyilvántartása, hogy a darabszám állításakor szorozni tudjunk.
+  f.unit = (f.qty > 0 && f.price !== "" && f.price != null) ? Number(f.price) / f.qty : 0;
+  const inQty = el("input", { type: "number", inputmode: "numeric", min: "0", value: f.qty, oninput: e => {
+    f.qty = Math.max(0, Number(e.target.value) || 0);
+    if (f.unit) { f.price = Math.round(f.unit * f.qty); inPrice.value = f.price; }
+  } });
+  const inPrice = el("input", { type: "number", inputmode: "numeric", min: "0", value: f.price, oninput: e => {
+    f.price = Number(e.target.value);
+    f.unit = f.qty > 0 ? f.price / f.qty : f.price;
+  }, placeholder: "Ár (Ft)" });
   const inStore = el("input", { value: f.store, oninput: e => f.store = e.target.value, placeholder: "Üzlet" });
   const inDate = el("input", { type: "date", value: f.date, oninput: e => f.date = e.target.value });
   const selPay = el("select", { onchange: e => f.payment = e.target.value },
@@ -175,6 +183,7 @@ export function renderItemForm(state, { item, onSave, onDelete, onCancel }) {
         inStore.value = f.store = t.store || "";
         inQty.value = f.qty = t.lastQty ?? 1;
         inPrice.value = f.price = t.lastPrice ?? "";
+        f.unit = t.lastPrice ?? 0;
         selPay.value = f.payment = t.payment || "card";
         if (db.categories.find(c => c.id === t.categoryId)) { selCat.value = f.categoryId = t.categoryId; }
       } }, `+ ${t.name}`));
