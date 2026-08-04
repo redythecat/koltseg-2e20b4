@@ -214,16 +214,19 @@ export function yearTotal(db, year) {
   return Math.round(sum);
 }
 
-// Éves bontás: bolti (tételek), kötelező (kimenő pénzmozgás) és a kettő együtt.
+// Éves bontás: bolti (tételek), kötelező (kimenő pénzmozgás), a kettő együtt, és bolti kp/kártya.
 export function yearTotals(db, year) {
-  let shop = 0, mandatory = 0;
+  let shop = 0, mandatory = 0, cash = 0, card = 0;
   for (const key of Object.keys(db.months)) {
     if (!key.startsWith(year + "-")) continue;
-    shop += db.months[key].items.reduce((s, i) => s + i.price, 0);
+    for (const i of db.months[key].items) {
+      shop += i.price;
+      if (i.payment === "cash") cash += i.price; else card += i.price;
+    }
     mandatory += db.months[key].transfers.filter(t => t.dir === "out").reduce((s, t) => s + t.amount, 0);
   }
   shop = Math.round(shop); mandatory = Math.round(mandatory);
-  return { shop, mandatory, total: shop + mandatory };
+  return { shop, mandatory, total: shop + mandatory, cash: Math.round(cash), card: Math.round(card) };
 }
 
 // --- Emlékeztetők (kötelező kiadások) ---

@@ -1,6 +1,12 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.20", date: "2026-08-04", notes: [
+      "Áttekintő átrendezve: a statisztika kettévált Havi és Éves kártyára (legalul), mindkettőben bolti kp/kártya összeggel.",
+      "A Kötelező kiadások kártya rövidebb: csak az összegek (összesen, kifizetve, hátralévő + kp/kártya bontás), a pipálható lista a Kiadások fülön maradt.",
+    ],
+  },
+  {
     v: "2.19", date: "2026-08-04", notes: [
       "Átvezetés „Csere valakivel”: megadható az irány is (kártya → kp vagy kp → kártya), és a listában, Excelben is látszik.",
     ],

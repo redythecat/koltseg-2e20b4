@@ -598,27 +598,7 @@ export function renderOverview(state, h) {
   }
   wrap.append(cats);
 
-  const pay = el("div", { class: "card" });
-  pay.append(el("h3", {}, "Bolti fizetés módja"));
-  pay.append(el("div", { class: "cat-head" }, el("span", {}, "Készpénz"), el("span", { class: "muted" }, ft(o.cash))));
-  pay.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Kártya"), el("span", { class: "muted" }, ft(o.card))));
-  wrap.append(pay);
-
-  const stats = monthStats(state.db, state.month);
-  const year = state.month.slice(0, 4);
-  const yt = yearTotals(state.db, year);
-  const statCard = el("div", { class: "card" });
-  statCard.append(el("h3", {}, "Statisztika"));
-  if (stats.topStore) statCard.append(el("div", { class: "cat-head" }, el("span", {}, "Legtöbbet itt költöttél"), el("span", { class: "muted" }, `${stats.topStore.name} · ${ft(stats.topStore.sum)}`)));
-  if (stats.biggestItem) statCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Legnagyobb tétel"), el("span", { class: "muted" }, `${stats.biggestItem.name} · ${ft(stats.biggestItem.price)}`)));
-  statCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Kimenő pénzmozgás"), el("span", { class: "muted" }, ft(o.expenseOut))));
-  statCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Bejövő pénzmozgás"), el("span", { class: "muted" }, ft(o.income))));
-  statCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, `${year} összes kiadása`), el("span", { class: "muted" }, ft(yt.total))));
-  statCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, `${year} kötelező kiadása`), el("span", { class: "muted" }, ft(yt.mandatory))));
-  statCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, `${year} bolti kiadása`), el("span", { class: "muted" }, ft(yt.shop))));
-  if (!stats.topStore && !stats.biggestItem) statCard.append(el("div", { class: "muted", style: "margin-top:6px" }, "Ehhez a hónaphoz még nincs elég adat."));
-  wrap.append(statCard);
-
+  // Kötelező kiadások: csak összegek (a tételes lista a Kiadások fülön pipálható)
   const due = dueSummaryForMonth(state.db, state.month, todayKey());
   const rem = el("div", { class: "card" });
   rem.append(el("h3", {}, "Kötelező kiadások"));
@@ -628,18 +608,38 @@ export function renderOverview(state, h) {
     const withAmount = due.filter(d => d.reminder.amount != null && d.reminder.amount !== "");
     const total = withAmount.reduce((s, d) => s + Number(d.reminder.amount), 0);
     const paidTotal = withAmount.filter(d => d.paid).reduce((s, d) => s + Number(d.reminder.amount), 0);
+    const cashDue = withAmount.filter(d => d.reminder.payment === "cash").reduce((s, d) => s + Number(d.reminder.amount), 0);
     rem.append(el("div", { class: "cat-head" }, el("span", {}, "Összesen"), el("span", { class: "muted" }, ft(total))));
     rem.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Ebből kifizetve"), el("span", { class: "muted" }, ft(paidTotal))));
     rem.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Hátralévő"), el("span", { style: "color:var(--neg);font-weight:600" }, ft(total - paidTotal))));
-    for (const d of due) {
-      const cb = el("input", { type: "checkbox", ...(d.paid ? { checked: "" } : {}), onchange: () => h.onTogglePaid(d.reminder) });
-      rem.append(el("div", { class: "due-row" }, cb,
-        el("div", { class: "due-main" },
-          el("div", {}, d.reminder.name + (d.reminder.amount != null && d.reminder.amount !== "" ? ` — ${ft(d.reminder.amount)}` : "")),
-          el("div", { class: "due-when" + (d.urgent ? " urgent" : "") }, `${fmtDay(d.date)} · ${d.paid ? "kifizetve" : dueWhenText(d.daysUntil)}`))));
-    }
+    rem.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Ebből készpénz"), el("span", { class: "muted" }, ft(cashDue))));
+    rem.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Ebből kártya"), el("span", { class: "muted" }, ft(total - cashDue))));
   }
   wrap.append(rem);
+
+  // Havi statisztika (lent), legalul az éves
+  const stats = monthStats(state.db, state.month);
+  const year = state.month.slice(0, 4);
+  const yt = yearTotals(state.db, year);
+  const mCard = el("div", { class: "card" });
+  mCard.append(el("h3", {}, "Havi statisztika"));
+  if (stats.topStore) mCard.append(el("div", { class: "cat-head" }, el("span", {}, "Legtöbbet itt költöttél"), el("span", { class: "muted" }, `${stats.topStore.name} · ${ft(stats.topStore.sum)}`)));
+  if (stats.biggestItem) mCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Legnagyobb tétel"), el("span", { class: "muted" }, `${stats.biggestItem.name} · ${ft(stats.biggestItem.price)}`)));
+  mCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Kimenő pénzmozgás"), el("span", { class: "muted" }, ft(o.expenseOut))));
+  mCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Bejövő pénzmozgás"), el("span", { class: "muted" }, ft(o.income))));
+  mCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Bolti készpénz"), el("span", { class: "muted" }, ft(o.cash))));
+  mCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Bolti kártya"), el("span", { class: "muted" }, ft(o.card))));
+  if (!stats.topStore && !stats.biggestItem) mCard.append(el("div", { class: "muted", style: "margin-top:6px" }, "Ehhez a hónaphoz még nincs elég adat."));
+  wrap.append(mCard);
+
+  const yCard = el("div", { class: "card" });
+  yCard.append(el("h3", {}, `Éves statisztika (${year})`));
+  yCard.append(el("div", { class: "cat-head" }, el("span", {}, "Összes kiadás"), el("span", { class: "muted" }, ft(yt.total))));
+  yCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Kötelező kiadás"), el("span", { class: "muted" }, ft(yt.mandatory))));
+  yCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Bolti kiadás"), el("span", { class: "muted" }, ft(yt.shop))));
+  yCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Bolti készpénz"), el("span", { class: "muted" }, ft(yt.cash))));
+  yCard.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Bolti kártya"), el("span", { class: "muted" }, ft(yt.card))));
+  wrap.append(yCard);
   return wrap;
 }
 

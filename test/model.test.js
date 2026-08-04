@@ -255,6 +255,8 @@ test("yearTotals splits shop items and mandatory (outgoing transfers) per year",
   assert.equal(yt.shop, 2000);
   assert.equal(yt.mandatory, 50000);
   assert.equal(yt.total, 52000);
+  assert.equal(yt.cash, 1500); // Sajt kp-val
+  assert.equal(yt.card, 500);  // Tej kártyával
 });
 
 test("swap transfers are excluded from sums and create no template", async () => {
