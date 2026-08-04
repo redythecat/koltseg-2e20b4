@@ -1,6 +1,13 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.23", date: "2026-08-04", notes: [
+      "Minden felugró ablak (súgó, verzió-napló, kérdések, szerkesztők) jobb felső sarkában bezáró X — a hosszú, görgethető ablakokban is végig látszik.",
+      "Kategória törlése két lépésben: előbb csak az áthelyezés / tételek törlése / mégse, és csak áthelyezésnél jön elő a kategória-választó (sok kategóriánál is átlátható).",
+      "Kategóriák kezelése: az „Új kategória” felülre került, a havi keret magyarázója pedig elhagyva.",
+    ],
+  },
+  {
     v: "2.22", date: "2026-08-04", notes: [
       "Szövegek pontosítva: „Blokk import” → „Blokk bevitel”, és a beolvasásnál már nem linket ígér, hanem JSON-t (a Claude azt ad vissza).",
       "A súgó kiegészült: elmentett tételek, pénzmozgás (kötelező/egyéb, átvezetés), kilépés dupla Vissza-gombbal.",

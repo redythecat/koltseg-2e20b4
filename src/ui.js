@@ -314,6 +314,9 @@ export function renderCategoryManager(state, { onAdd, onSave, onDelete, onBack, 
   const wrap = el("div", {});
   wrap.append(el("div", { class: "topbar" }, el("h2", {}, "Kategóriák"), el("button", { class: "ghost", onclick: onBack }, "Kész")));
   wrap.append(el("p", { class: "muted", style: "margin-top:0" }, "Sorrend: a fogantyút (≡) tartsd nyomva, majd húzd a kategóriát fel/le."));
+  const nc = el("input", { placeholder: "Új kategória neve" });
+  wrap.append(el("div", { class: "card" }, el("label", {}, "Új kategória"), nc,
+    el("button", { class: "primary", style: "margin-top:8px;width:100%", onclick: () => { if (nc.value.trim()) onAdd(nc.value.trim()); } }, "Hozzáadás")));
   const list = el("div", { id: "cat-list" });
   for (const c of db.categories.slice().sort((a, b) => a.order - b.order)) {
     const card = el("div", { class: "card cat-card", "data-id": c.id });
@@ -332,10 +335,6 @@ export function renderCategoryManager(state, { onAdd, onSave, onDelete, onBack, 
     list.append(card);
   }
   wrap.append(list);
-  const nc = el("input", { placeholder: "Új kategória neve" });
-  wrap.append(el("div", { class: "card" }, el("label", {}, "Új kategória"), nc,
-    el("button", { class: "primary", style: "margin-top:8px;width:100%", onclick: () => { if (nc.value.trim()) onAdd(nc.value.trim()); } }, "Hozzáadás")));
-  wrap.append(el("p", { class: "muted" }, "A havi keret opcionális. Ha megadod, a Kiadásoknál a kategória sávval mutatja, hol tartasz, és pirosra vált, ha átléped."));
   return wrap;
 }
 

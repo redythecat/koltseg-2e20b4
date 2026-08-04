@@ -9,6 +9,18 @@ function overlay() {
 }
 function close(ov) { ov.remove(); }
 
+// Bezáró X az ablak jobb felső sarkában. onClose: mit tegyen bezáráskor.
+function closeX(box, onClose) {
+  const b = document.createElement("button");
+  b.className = "modal-x";
+  b.type = "button";
+  b.setAttribute("aria-label", "Bezárás");
+  b.textContent = "×";
+  b.onclick = onClose;
+  box.prepend(b);   // elöl kell lennie: lebeg + tapad, így görgetéskor is látszik
+  return b;
+}
+
 export function toast(message) {
   const t = document.createElement("div");
   t.className = "toast";
@@ -39,6 +51,7 @@ export function confirmModal(message, { okText = "Igen", cancelText = "Mégse", 
     ov.onclick = (e) => { if (e.target === ov) { close(ov); resolve(false); } };
     row.append(cancel, ok);
     box.append(p, row);
+    closeX(box, () => { close(ov); resolve(false); });
     ov.append(box);
   });
 }
@@ -85,6 +98,7 @@ export function helpModal() {
   close_.textContent = "Bezárás";
   close_.onclick = () => close(ov);
   box.append(close_);
+  closeX(box, () => close(ov));
   ov.onclick = (e) => { if (e.target === ov) close(ov); };
   ov.append(box);
 }
@@ -122,6 +136,7 @@ export function formModal(title, fields) {
     ov.onclick = (e) => { if (e.target === ov) { close(ov); resolve(null); } };
     row.append(cancel, ok);
     box.append(row);
+    closeX(box, () => { close(ov); resolve(null); });
     ov.append(box);
     setTimeout(() => { const first = inputs[fields[0]?.key]; if (first) first.focus(); }, 30);
   });
@@ -177,6 +192,7 @@ export function changelogModal(entries) {
     close_.textContent = "Bezárás";
     close_.onclick = () => close(ov);
     box.append(close_);
+    closeX(box, () => close(ov));   // a draw() újrarajzol, ezért itt kerül vissza
   }
 
   draw();
@@ -209,6 +225,7 @@ export function choiceModal(message, options) {
     cancel.onclick = () => { close(ov); resolve(null); };
     ov.onclick = (e) => { if (e.target === ov) { close(ov); resolve(null); } };
     box.append(cancel);
+    closeX(box, () => { close(ov); resolve(null); });
     ov.append(box);
   });
 }

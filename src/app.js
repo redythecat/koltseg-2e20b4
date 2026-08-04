@@ -97,11 +97,18 @@ async function removeTransfer(id) {
 async function onDeleteCategory(c) {
   if (state.db.categories.length <= 1) { toast("Legalább egy kategória kell."); return; }
   const others = state.db.categories.filter(x => x.id !== c.id);
-  const options = others.map(x => ({ label: `Áthelyezés ide: ${x.name}`, value: x.id }));
-  options.push({ label: "Tételek törlése is", value: "__delete__", danger: true });
-  const choice = await choiceModal(`"${c.name}" törlése. Mi legyen a benne lévő tételekkel?`, options);
-  if (choice === null) return;
-  deleteCategory(state.db, c.id, choice === "__delete__" ? null : choice);
+  // 1. lépés: mi legyen a tételekkel? (a kategória-lista csak a 2. lépésben jön elő)
+  const what = await choiceModal(`"${c.name}" törlése. Mi legyen a benne lévő tételekkel?`, [
+    { label: "Áthelyezés másik kategóriába", value: "__move__" },
+    { label: "Tételek törlése is", value: "__delete__", danger: true },
+  ]);
+  if (what === null) return;
+  let target = null;
+  if (what === "__move__") {
+    target = await choiceModal("Melyik kategóriába kerüljenek?", others.map(x => ({ label: x.name, value: x.id })));
+    if (target === null) return;
+  }
+  deleteCategory(state.db, c.id, target);
   commit();
 }
 
