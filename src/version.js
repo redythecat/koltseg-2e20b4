@@ -1,6 +1,11 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.30", date: "2026-08-05", notes: [
+      "Apró csinosítások: a nyilak elfordulnak nyitáskor (nem átvillannak), fül- és hónapváltásnál az oldal finoman áttűnik, a gombok koppintásra picit összenyomódnak, a sötét/világos téma pedig fokozatosan úszik át.",
+    ],
+  },
+  {
     v: "2.29", date: "2026-08-05", notes: [
       "Összeg-szűrő egyszerűbben: felül a beírható Ft-tól/Ft-ig, alatta egyetlen sáv két fogantyúval.",
       "A szűrő-ablak alján „Szűrés” gomb: bezár és mutatja az eredményt.",

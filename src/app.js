@@ -313,7 +313,7 @@ const handlers = {
       else toast(`Ez már a legfrissebb (${APP_VERSION}).`);
     } catch { toast("Nem sikerült ellenőrizni. Próbáld újra internettel."); }
   },
-  onSetTheme: (t) => { state.db.settings.theme = t; applyTheme(t); commit(); },
+  onSetTheme: (t) => { state.db.settings.theme = t; applyTheme(t); save(state.db); },   // nincs render: így a színek szépen átúsznak
   onToggleNotifications: async () => {
     if (!state.db.settings.notifications) {
       if (!("Notification" in window)) { toast("Ez az eszköz nem támogatja az értesítéseket."); return; }
@@ -403,9 +403,18 @@ window.addEventListener("popstate", () => {
   setTimeout(syncBackHistory, 2800);
 });
 
+let lastViewKey = "";
 function render() {
   const root = document.getElementById("app");
   root.replaceChildren();
+  // Fül-, hónap- vagy űrlapváltásnál finom áttűnés; sima frissítésnél (pl. gépelés) nem.
+  const viewKey = state.view + "|" + state.month + "|" + (state.editing ? state.editing.type : "");
+  if (viewKey !== lastViewKey) {
+    lastViewKey = viewKey;
+    root.classList.remove("view-in");
+    void root.offsetWidth;   // újraindítja az animációt
+    root.classList.add("view-in");
+  }
 
   if (state.editing?.type === "item") {
     const it = state.editing.id ? state.db.months[state.month].items.find(i => i.id === state.editing.id) : null;

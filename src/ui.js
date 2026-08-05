@@ -15,12 +15,12 @@ function collapsibleBody(open, inner, chevEl, onPersist) {
   const body = el("div", { class: "col" + (open ? " open" : "") }, el("div", { class: "col-inner" }, inner));
   const toggle = () => {
     const isOpen = body.classList.toggle("open");
-    if (chevEl) chevEl.textContent = isOpen ? "▾" : "▸";
+    if (chevEl) chevEl.classList.toggle("open", isOpen);
     if (onPersist) onPersist(!isOpen);
   };
   return { body, toggle };
 }
-function chev(open) { return el("span", { class: "chev" }, open ? "▾" : "▸"); }
+function chev(open) { return el("span", { class: "chev" + (open ? " open" : "") }, "▸"); }
 
 const CAL_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>';
 
@@ -98,7 +98,7 @@ export function renderFilterPanel(state, h, redraw, onApply) {
   const section = (key, title, summary, buildBody) => {
     const open = !!state.filterOpen[key];
     const box = el("div", { class: "fp-sec" });
-    const chevEl = el("span", { class: "chev" }, open ? "▾" : "▸");
+    const chevEl = el("span", { class: "chev" + (open ? " open" : "") }, "▸");
     const { body, toggle } = collapsibleBody(open, buildBody(), chevEl, (collapsed) => { state.filterOpen[key] = !collapsed; });
     box.append(el("button", { class: "fp-head", type: "button", onclick: toggle },
       el("span", { class: "left" }, chevEl, el("span", { class: "fp-title" }, title)),
@@ -340,7 +340,7 @@ function renderMonthTotal(state, h, filtered) {
     filtered: filtered ? `Szűrt tételek (${filtered.count} db)` : "Szűrt tételek" };
   const open = state.monthTotalOpen;
   const box = el("div", { class: "month-total stack" + (filtered && mode === "filtered" ? " filtered" : "") });
-  const chevEl = el("span", { class: "chev-sm" }, open ? "▾" : "▸");
+  const chevEl = el("span", { class: "chev-sm" + (open ? " open" : "") }, "▸");
   const inner = el("div", {});
   const opt = (m) => el("button", { class: "mt-opt" + (mode === m ? " sel" : ""),
     onclick: () => h.onSetMonthTotalMode(m, !!filtered) },
