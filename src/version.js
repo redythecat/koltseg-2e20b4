@@ -4,7 +4,7 @@ export const CHANGELOG = [
     v: "2.29", date: "2026-08-05", notes: [
       "Összeg-szűrő egyszerűbben: felül a beírható Ft-tól/Ft-ig, alatta egyetlen sáv két fogantyúval.",
       "A szűrő-ablak alján „Szűrés” gomb: bezár és mutatja az eredményt.",
-      "A lenyíló részek (kategóriák, Áttekintő-kártyák, gyorslista, szűrő-szakaszok) finoman úsznak be, nem ugranak — és a felugró ablakok is szépen jelennek meg.",
+      "A lenyíló részek (kategóriák, Áttekintő-kártyák, gyorslista, szűrő-szakaszok, havi összeg) most már tényleg kinyílnak-becsukódnak — a magasság is animálódik, semmi nem ugrik. A felugró ablakok is szépen jelennek meg.",
     ],
   },
   {

@@ -9,6 +9,17 @@ const YEARS = Array.from({ length: 2100 - 2025 + 1 }, (_, i) => 2025 + i);
 const MONTH_SHORT = ["jan.", "feb.", "márc.", "ápr.", "máj.", "jún.", "júl.", "aug.", "szept.", "okt.", "nov.", "dec."];
 
 export function isCollapsed(state, key) { return !!(state.db.settings.collapsed && state.db.settings.collapsed[key]); }
+// Lecsukható test: a fejléc-kattintás HELYBEN nyit/csuk (CSS animálja a magasságot),
+// az oldal nem rajzolódik újra. onPersist(collapsed) menti el az állapotot.
+function collapsibleBody(open, inner, chevEl, onPersist) {
+  const body = el("div", { class: "col" + (open ? " open" : "") }, el("div", { class: "col-inner" }, inner));
+  const toggle = () => {
+    const isOpen = body.classList.toggle("open");
+    if (chevEl) chevEl.textContent = isOpen ? "▾" : "▸";
+    if (onPersist) onPersist(!isOpen);
+  };
+  return { body, toggle };
+}
 function chev(open) { return el("span", { class: "chev" }, open ? "▾" : "▸"); }
 
 const CAL_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>';
@@ -87,15 +98,12 @@ export function renderFilterPanel(state, h, redraw, onApply) {
   const section = (key, title, summary, buildBody) => {
     const open = !!state.filterOpen[key];
     const box = el("div", { class: "fp-sec" });
-    box.append(el("button", { class: "fp-head", type: "button",
-      onclick: () => { state.filterOpen[key] = !open; state.filterJust = !open ? key : null; redraw(); } },
-      el("span", { class: "left" }, el("span", { class: "chev" }, open ? "▾" : "▸"), el("span", { class: "fp-title" }, title)),
+    const chevEl = el("span", { class: "chev" }, open ? "▾" : "▸");
+    const { body, toggle } = collapsibleBody(open, buildBody(), chevEl, (collapsed) => { state.filterOpen[key] = !collapsed; });
+    box.append(el("button", { class: "fp-head", type: "button", onclick: toggle },
+      el("span", { class: "left" }, chevEl, el("span", { class: "fp-title" }, title)),
       el("span", { class: "fp-sum" }, summary)));
-    if (open) {
-      const body = buildBody();
-      if (state.filterJust === key) body.classList.add("reveal");
-      box.append(body);
-    }
+    box.append(body);
     wrap.append(box);
   };
 
@@ -189,7 +197,6 @@ export function renderFilterPanel(state, h, redraw, onApply) {
     wrap.append(el("button", { class: "ghost", style: "width:100%;margin-top:0.5rem;color:var(--neg)",
       onclick: () => { h.onClearFilters(); redraw(); } }, "Minden szűrő törlése"));
   }
-  state.filterJust = null;   // csak az első kirajzoláskor animálunk
   return wrap;
 }
 
@@ -240,18 +247,20 @@ export function renderRemindersPinned(state, h) {
   const open = !isCollapsed(state, "rem");
   const unpaid = due.filter(d => !d.paid).length;
   const card = el("div", { class: "card", style: "border-color:var(--accent)" });
-  card.append(el("button", { class: "collapse-head", onclick: () => h.onToggleCollapse("rem") },
-    el("span", { class: "left" }, chev(open), el("span", { class: "sec-title" }, "Kötelező kiadások")),
-    el("span", { class: "sec-sum" }, unpaid ? `${unpaid} hátra` : "kész")));
-  if (open) {
-    for (const d of due) {
-      const cb = el("input", { type: "checkbox", ...(d.paid ? { checked: "" } : {}), onchange: () => h.onTogglePaid(d.reminder) });
-      card.append(el("div", { class: "due-row" }, cb,
-        el("div", { class: "due-main" },
-          el("div", {}, d.reminder.name + (d.reminder.amount != null && d.reminder.amount !== "" ? ` — ${ft(d.reminder.amount)}` : "")),
-          el("div", { class: "due-when" + (d.urgent ? " urgent" : "") }, `${fmtDay(d.date)} · ${d.paid ? "kifizetve" : dueWhenText(d.daysUntil)}`))));
-    }
+  const chevEl = chev(open);
+  const inner = el("div", {});
+  for (const d of due) {
+    const cb = el("input", { type: "checkbox", ...(d.paid ? { checked: "" } : {}), onchange: () => h.onTogglePaid(d.reminder) });
+    inner.append(el("div", { class: "due-row" }, cb,
+      el("div", { class: "due-main" },
+        el("div", {}, d.reminder.name + (d.reminder.amount != null && d.reminder.amount !== "" ? ` — ${ft(d.reminder.amount)}` : "")),
+        el("div", { class: "due-when" + (d.urgent ? " urgent" : "") }, `${fmtDay(d.date)} · ${d.paid ? "kifizetve" : dueWhenText(d.daysUntil)}`))));
   }
+  const { body, toggle } = collapsibleBody(open, inner, chevEl, (collapsed) => h.onSetCollapsed("rem", collapsed));
+  card.append(el("button", { class: "collapse-head", onclick: toggle },
+    el("span", { class: "left" }, chevEl, el("span", { class: "sec-title" }, "Kötelező kiadások")),
+    el("span", { class: "sec-sum" }, unpaid ? `${unpaid} hátra` : "kész")));
+  card.append(body);
   return card;
 }
 
@@ -331,19 +340,19 @@ function renderMonthTotal(state, h, filtered) {
     filtered: filtered ? `Szűrt tételek (${filtered.count} db)` : "Szűrt tételek" };
   const open = state.monthTotalOpen;
   const box = el("div", { class: "month-total stack" + (filtered && mode === "filtered" ? " filtered" : "") });
-  box.append(el("button", { class: "mt-head", onclick: h.onToggleMonthTotal },
+  const chevEl = el("span", { class: "chev-sm" }, open ? "▾" : "▸");
+  const inner = el("div", {});
+  const opt = (m) => el("button", { class: "mt-opt" + (mode === m ? " sel" : ""),
+    onclick: () => h.onSetMonthTotalMode(m, !!filtered) },
+    el("span", {}, labels[m]), el("span", { class: "v" }, ft(vals[m])));
+  if (filtered) inner.append(opt("filtered"));
+  inner.append(opt("total"));
+  inner.append(opt("items"));
+  const { body, toggle } = collapsibleBody(open, inner, chevEl, (collapsed) => { state.monthTotalOpen = !collapsed; });
+  box.append(el("button", { class: "mt-head", onclick: toggle },
     el("span", { class: "mt-label" }, labels[mode]),
-    el("span", { class: "right" }, el("span", { class: "mt-amount" }, ft(vals[mode])), el("span", { class: "chev-sm" }, open ? "▾" : "▸"))));
-  if (open) {
-    const optsBox = el("div", { class: state.justToggled === "mt" ? "reveal" : "" });
-    const opt = (m) => el("button", { class: "mt-opt" + (mode === m ? " sel" : ""),
-      onclick: () => h.onSetMonthTotalMode(m, !!filtered) },
-      el("span", {}, labels[m]), el("span", { class: "v" }, ft(vals[m])));
-    if (filtered) optsBox.append(opt("filtered"));
-    optsBox.append(opt("total"));
-    optsBox.append(opt("items"));
-    box.append(optsBox);
-  }
+    el("span", { class: "right" }, el("span", { class: "mt-amount" }, ft(vals[mode])), chevEl)));
+  box.append(body);
   return box;
 }
 
@@ -392,27 +401,27 @@ export function renderMonthView(state, h) {
     const total = filtering ? Math.round(items.reduce((sum, i) => sum + i.price, 0)) : categoryTotal(db, month, c.id);
     const over = !filtering && c.budget && total > c.budget;
     const card = el("div", { class: "card" });
-    card.append(el("button", { class: "collapse-head", onclick: () => h.onToggleCollapse(key) },
-      el("span", { class: "left" }, chev(open), el("span", { class: "sec-title" }, c.name)),
+    const chevEl = chev(open);
+    const inner = el("div", {});
+    for (const it of items) {
+      // Több hónapra szűrve a dátum is kell, különben nem tudnád, melyik hónapból jött.
+      const meta = `${it.qty} db · ${it.store || "—"} · ${it.payment === "cash" ? "kp" : "kártya"}` +
+        (cross && it.date ? ` · ${it.date}` : "");
+      inner.append(el("div", { class: "item", onclick: () => h.onEditItem(it.id, it.monthKey) },
+        el("div", {}, el("div", {}, it.name), el("small", {}, meta)),
+        el("div", {}, ft(it.price))));
+    }
+    if (!items.length) inner.append(el("div", { class: "item muted" }, "Nincs tétel"));
+    const { body, toggle } = collapsibleBody(open, inner, chevEl, (collapsed) => h.onSetCollapsed(key, collapsed));
+    card.append(el("button", { class: "collapse-head", onclick: toggle },
+      el("span", { class: "left" }, chevEl, el("span", { class: "sec-title" }, c.name)),
       el("span", { class: "sec-sum", style: over ? "color:var(--neg)" : "" },
         (!filtering && c.budget) ? `${ft(total)} / ${ft(c.budget)}` : ft(total))));
     if (!filtering && c.budget) {
       const pct = Math.min(100, Math.round((total / c.budget) * 100));
       card.append(el("div", { class: "bar" }, el("span", { style: `width:${pct}%` + (over ? ";background:var(--neg)" : "") })));
     }
-    if (open) {
-      const body = el("div", { class: state.justToggled === key ? "reveal" : "" });
-      for (const it of items) {
-        // Több hónapra szűrve a dátum is kell, különben nem tudnád, melyik hónapból jött.
-        const meta = `${it.qty} db · ${it.store || "—"} · ${it.payment === "cash" ? "kp" : "kártya"}` +
-          (cross && it.date ? ` · ${it.date}` : "");
-        body.append(el("div", { class: "item", onclick: () => h.onEditItem(it.id, it.monthKey) },
-          el("div", {}, el("div", {}, it.name), el("small", {}, meta)),
-          el("div", {}, ft(it.price))));
-      }
-      if (!items.length) body.append(el("div", { class: "item muted" }, "Nincs tétel"));
-      card.append(body);
-    }
+    card.append(body);
     wrap.append(card);
   }
   if (filtering && !shownAny) wrap.append(el("div", { class: "card muted" }, "Nincs találat."));
@@ -446,9 +455,8 @@ function quickListBox(entries) {
     const q = search.value.trim().toLowerCase();
     for (const btn of quick.children) btn.style.display = (!q || btn.getAttribute("data-name").includes(q)) ? "" : "none";
   };
-  const body = el("div", { style: "display:none" }, search, quick);
-  let open = false;
-  header.onclick = () => { open = !open; body.style.display = open ? "" : "none"; body.classList.toggle("reveal", open); chevSpan.textContent = open ? "▾" : "▸"; };
+  const { body, toggle } = collapsibleBody(false, el("div", {}, search, quick), chevSpan, null);
+  header.onclick = toggle;
   return [header, body];
 }
 
@@ -702,24 +710,24 @@ export function renderTransfersView(state, h) {
     const card = el("div", { class: "card" });
     const sumStyle = dir === "swap" ? "color:var(--muted)" : "color:" + (dir === "in" ? "var(--pos)" : "var(--neg)");
     const sign = dir === "in" ? "+" : dir === "out" ? "−" : "";
-    card.append(el("button", { class: "collapse-head", onclick: () => h.onToggleCollapse(key) },
-      el("span", { class: "left" }, chev(open), el("span", { class: "sec-title" }, title)),
-      el("span", { class: "sec-sum", style: sumStyle }, sign + ft(sum))));
-    if (open) {
-      const body = el("div", { class: state.justToggled === key ? "reveal" : "" });
-      if (dir === "swap") body.append(el("div", { class: "muted", style: "font-size:0.8125rem;margin:0 0 4px" }, "Az átvezetések nem számítanak bele az összesítésekbe."));
-      for (const t of list) {
-        const small = dir === "swap"
-          ? `${t.date || "—"}${t.kind === "person" && t.partner ? ` · ${t.partner}` : ""}${t.kind === "person" && t.flow ? ` · ${SWAP_FLOW[t.flow] || ""}` : ""}`
-          : `${t.date || "—"} · ${t.method === "cash" ? "kp" : "utalás"} · ${t.partner || "—"}`;
-        body.append(el("div", { class: "item", onclick: () => h.onEditTransfer(t.id) },
-          el("div", {}, el("div", {}, t.name), el("small", {}, small)),
-          el("div", { class: dir === "in" ? "pos" : dir === "out" ? "neg" : "muted" }, sign + ft(t.amount))));
-      }
-      if (!list.length) body.append(el("div", { class: "item muted" }, "Nincs tétel"));
-      body.append(el("button", { class: "ghost", style: "width:100%;margin-top:8px", onclick: () => h.onAddTransfer(dir) }, `Új ${title.toLowerCase()}`));
-      card.append(body);
+    const chevEl = chev(open);
+    const inner = el("div", {});
+    if (dir === "swap") inner.append(el("div", { class: "muted", style: "font-size:0.8125rem;margin:0 0 4px" }, "Az átvezetések nem számítanak bele az összesítésekbe."));
+    for (const t of list) {
+      const small = dir === "swap"
+        ? `${t.date || "—"}${t.kind === "person" && t.partner ? ` · ${t.partner}` : ""}${t.kind === "person" && t.flow ? ` · ${SWAP_FLOW[t.flow] || ""}` : ""}`
+        : `${t.date || "—"} · ${t.method === "cash" ? "kp" : "utalás"} · ${t.partner || "—"}`;
+      inner.append(el("div", { class: "item", onclick: () => h.onEditTransfer(t.id) },
+        el("div", {}, el("div", {}, t.name), el("small", {}, small)),
+        el("div", { class: dir === "in" ? "pos" : dir === "out" ? "neg" : "muted" }, sign + ft(t.amount))));
     }
+    if (!list.length) inner.append(el("div", { class: "item muted" }, "Nincs tétel"));
+    inner.append(el("button", { class: "ghost", style: "width:100%;margin-top:8px", onclick: () => h.onAddTransfer(dir) }, `Új ${title.toLowerCase()}`));
+    const { body, toggle } = collapsibleBody(open, inner, chevEl, (collapsed) => h.onSetCollapsed(key, collapsed));
+    card.append(el("button", { class: "collapse-head", onclick: toggle },
+      el("span", { class: "left" }, chevEl, el("span", { class: "sec-title" }, title)),
+      el("span", { class: "sec-sum", style: sumStyle }, sign + ft(sum))));
+    card.append(body);
     wrap.append(card);
   }
   return wrap;
@@ -816,12 +824,13 @@ export function renderTransferForm(state, { transfer, dir, onSave, onDelete, onC
 function ovCard(state, h, key, title) {
   const card = el("div", { class: "card" });
   const open = !isCollapsed(state, "ov:" + key);
-  card.append(el("button", { class: "collapse-head", onclick: () => h.onToggleCollapse("ov:" + key) },
-    el("span", { class: "left" }, chev(open), el("span", { class: "sec-title", style: "font-size:1.0625rem" }, title))));
-  const body = el("div", { style: open ? "" : "display:none",
-    class: open && state.justToggled === "ov:" + key ? "reveal" : "" });
+  const chevEl = chev(open);
+  const inner = el("div", {});
+  const { body, toggle } = collapsibleBody(open, inner, chevEl, (collapsed) => h.onSetCollapsed("ov:" + key, collapsed));
+  card.append(el("button", { class: "collapse-head", onclick: toggle },
+    el("span", { class: "left" }, chevEl, el("span", { class: "sec-title", style: "font-size:1.0625rem" }, title))));
   card.append(body);
-  return [card, body];
+  return [card, inner];
 }
 
 export function renderOverview(state, h) {

@@ -199,11 +199,11 @@ const handlers = {
   onPrevMonth: () => { state.month = shiftMonth(state.month, -1); render(); },
   onNextMonth: () => { state.month = shiftMonth(state.month, 1); render(); },
   onSetMonth: (key) => { state.month = key; render(); },
-  onToggleCollapse: (key) => {
-    const c = state.db.settings.collapsed; c[key] = !c[key]; if (!c[key]) delete c[key];
-    state.justToggled = c[key] ? null : key;   // csak kinyíláskor animálunk
-    commit();
-    state.justToggled = null;
+  // A nyitás/csukás helyben, animálva történik (ui.js); itt csak elmentjük, újrarajzolás nélkül.
+  onSetCollapsed: (key, collapsed) => {
+    const c = state.db.settings.collapsed;
+    if (collapsed) c[key] = true; else delete c[key];
+    save(state.db);
   },
   onSetAccent: (key) => { state.db.settings.accent = key; applyAccent(key); commit(); },
   onSetFontScale: (v) => { state.db.settings.fontScale = v; applyFontScale(v); commit(); },
@@ -229,12 +229,6 @@ const handlers = {
     if (si) { si.focus(); const n = si.value.length; try { si.setSelectionRange(n, n); } catch { /* noop */ } }
   },
   onManageCategories: () => { state.view = "categories"; render(); },
-  onToggleMonthTotal: () => {
-    state.monthTotalOpen = !state.monthTotalOpen;
-    state.justToggled = state.monthTotalOpen ? "mt" : null;
-    render();
-    state.justToggled = null;
-  },
   onSetMonthTotalMode: (m, whileFiltering) => {
     state.monthTotalOpen = false;
     if (whileFiltering) { state.filterTotalMode = m; render(); return; }  // szűrés alatt nem írjuk át a beállítást
