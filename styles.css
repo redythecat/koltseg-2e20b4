@@ -138,8 +138,20 @@ label { display: block; color: var(--muted); font-size: 0.8125rem; margin: 0.5re
 .fp-opt.sel { background: color-mix(in srgb, var(--accent) 16%, var(--bg));
   border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); color: var(--accent); font-weight: 700; }
 .fp-tick { flex: none; font-weight: 800; }
-.fp-range { width: 100%; min-height: 0; padding: 0; margin: 0.125rem 0 0.375rem;
-  background: transparent; border: none; accent-color: var(--accent); }
+/* Egy sáv, két fogantyú: a két range átlátszón egymáson ül, csak a fogantyújuk fogható meg */
+.dual-range { position: relative; height: 2.25rem; margin: 0.625rem 0 0.25rem; }
+.dual-range::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 0.375rem;
+  transform: translateY(-50%); background: var(--bg); border: 1px solid var(--line); border-radius: 0.25rem; }
+.dual-range .dr-fill { position: absolute; top: 50%; height: 0.375rem; transform: translateY(-50%);
+  background: var(--accent); border-radius: 0.25rem; }
+.dual-range input[type="range"].dr-thumb { position: absolute; inset: 0; width: 100%; height: 100%;
+  margin: 0; padding: 0; min-height: 0; background: transparent; border: none;
+  appearance: none; -webkit-appearance: none; pointer-events: none; }
+.dual-range .dr-thumb::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; pointer-events: auto;
+  width: 1.625rem; height: 1.625rem; border-radius: 50%; background: #fff;
+  border: 3px solid var(--accent); box-shadow: 0 1px 4px rgba(0,0,0,0.35); cursor: grab; }
+.dual-range .dr-thumb::-moz-range-thumb { pointer-events: auto; width: 1.625rem; height: 1.625rem;
+  border-radius: 50%; background: #fff; border: 3px solid var(--accent); }
 
 /* Szűrt havi összeg: hangsúlyosabb keret, hogy látszódjon, nem a teljes hónapot mutatja */
 .month-total.filtered { border-color: var(--accent); }

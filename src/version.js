@@ -1,6 +1,11 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.29", date: "2026-08-05", notes: [
+      "Összeg-szűrő egyszerűbben: felül a beírható Ft-tól/Ft-ig, alatta egyetlen sáv két fogantyúval.",
+    ],
+  },
+  {
     v: "2.28", date: "2026-08-05", notes: [
       "Új szűrő a Kiadásoknál: a keresősáv jobb szélén a szűrő-gomb. Szűrhetsz üzletre, kategóriára, fizetési módra, dátumra (egy nap vagy időszak) és összegre (csúszkával vagy beírt Ft-tól/Ft-ig).",
       "Egy szűrőn belül több érték is választható, és mindegyik listában ott az „Összes”.",

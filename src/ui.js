@@ -139,7 +139,7 @@ export function renderFilterPanel(state, h, redraw) {
       body.append(el("input", { type: "date", value: f.day || "", onchange: e => { f.day = e.target.value; redraw(); } }));
     }
     body.append(el("p", { class: "muted", style: "margin:0.5rem 0 0.25rem;font-size:0.8125rem" },
-      "Dátum-szűrésnél az app minden hónapban keres, nem csak a most látottban."));
+      "Bármelyik nap választható, régebbi hónapból is — ilyenkor az app a többi hónap tételei közt is keres, nem csak abban, amit épp nézel."));
     if (b.from || b.to) body.append(el("button", { class: "ghost", style: "width:100%;margin-top:0.25rem", onclick: () => { h.onClearFilterDate(); redraw(); } }, "Dátum-szűrő törlése"));
     return body;
   });
@@ -149,20 +149,34 @@ export function renderFilterPanel(state, h, redraw) {
   section("price", "Összeg", priceSummary, () => {
     const body = el("div", {});
     if (maxPrice === 0) { body.append(el("div", { class: "muted", style: "padding:0.25rem 0 0.5rem" }, "Még nincs tétel, amiből sávot képezhetnék.")); return body; }
-    const rMin = el("input", { type: "range", class: "fp-range", min: "0", max: String(maxPrice), step: "1", value: String(min) });
-    const rMax = el("input", { type: "range", class: "fp-range", min: "0", max: String(maxPrice), step: "1", value: String(max) });
+    // Felül a beírható Ft-tól/Ft-ig, alatta EGY sáv két fogantyúval.
     const nMin = el("input", { type: "number", inputmode: "numeric", min: "0", max: String(maxPrice), value: String(min) });
     const nMax = el("input", { type: "number", inputmode: "numeric", min: "0", max: String(maxPrice), value: String(max) });
-    // A csúszka és a mező ugyanazt állítja; a min sosem lépheti túl a maxot.
+    body.append(el("div", { class: "row" },
+      el("div", {}, el("label", {}, "Ft-tól"), nMin), el("div", {}, el("label", {}, "Ft-ig"), nMax)));
     const apply = (lo, hi) => { h.onSetFilterPrice(lo, hi); redraw(); };
-    rMin.oninput = () => apply(Math.min(Number(rMin.value), Number(rMax.value)), max);
-    rMax.oninput = () => apply(min, Math.max(Number(rMax.value), Number(rMin.value)));
     nMin.onchange = () => apply(Math.max(0, Math.min(Number(nMin.value) || 0, max)), max);
     nMax.onchange = () => apply(min, Math.min(maxPrice, Math.max(Number(nMax.value) || 0, min)));
-    body.append(el("label", {}, `Legalább — ${ft(min)}`), rMin);
-    body.append(el("label", {}, `Legfeljebb — ${ft(max)}`), rMax);
-    body.append(el("div", { class: "row", style: "margin-top:0.5rem" },
-      el("div", {}, el("label", {}, "Ft-tól"), nMin), el("div", {}, el("label", {}, "Ft-ig"), nMax)));
+    const fill = el("div", { class: "dr-fill" });
+    const rMin = el("input", { type: "range", class: "dr-thumb", min: "0", max: String(maxPrice), step: "1", value: String(min) });
+    const rMax = el("input", { type: "range", class: "dr-thumb", min: "0", max: String(maxPrice), step: "1", value: String(max) });
+    const paint = () => {
+      const lo = Number(rMin.value), hi = Number(rMax.value);
+      fill.style.left = (lo / maxPrice * 100) + "%";
+      fill.style.right = (100 - hi / maxPrice * 100) + "%";
+      nMin.value = String(lo); nMax.value = String(hi);
+      // Ha mindkét fogantyú a jobb szélen áll, az alsó legyen felül, hogy vissza lehessen húzni.
+      rMin.style.zIndex = lo >= maxPrice ? 5 : 3;
+    };
+    // Húzás közben csak rajzolunk; a szűrő elengedéskor (change) frissül — nem szakad meg a húzás.
+    rMin.oninput = () => { if (Number(rMin.value) > Number(rMax.value)) rMin.value = rMax.value; paint(); };
+    rMax.oninput = () => { if (Number(rMax.value) < Number(rMin.value)) rMax.value = rMin.value; paint(); };
+    rMin.onchange = () => apply(Number(rMin.value), Number(rMax.value));
+    rMax.onchange = () => apply(Number(rMin.value), Number(rMax.value));
+    const track = el("div", { class: "dual-range" }, fill, rMin, rMax);
+    rMax.style.zIndex = 4;
+    paint();
+    body.append(track);
     if (min > 0 || max < maxPrice) body.append(el("button", { class: "ghost", style: "width:100%;margin-top:0.5rem", onclick: () => apply(0, maxPrice) }, "Összeg-szűrő törlése"));
     return body;
   });
