@@ -1,6 +1,11 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.31", date: "2026-08-05", notes: [
+      "Telefonon koppintáskor nem villan fel a rendszer kék kijelölése a gombokon és a lenyitható fejléceken, és véletlenül sem jelölődik ki a szövegük — a visszajelzést az app saját, finom animációja adja.",
+    ],
+  },
+  {
     v: "2.30", date: "2026-08-05", notes: [
       "Apró csinosítások: a nyilak elfordulnak nyitáskor (nem átvillannak), fül- és hónapváltásnál az oldal finoman áttűnik, a gombok koppintásra picit összenyomódnak, a sötét/világos téma pedig fokozatosan úszik át.",
     ],

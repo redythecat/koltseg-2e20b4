@@ -9,7 +9,12 @@
 }
 :root[data-fontscale="small"] { font-size: 14px; }
 
-* { box-sizing: border-box; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+/* Koppintható elemeken ne villanjon a rendszer kék kijelölése, és ne legyen
+   véletlen szövegkijelölés — a visszajelzést a saját animációnk adja. */
+button, .item, .collapse-head, .fp-head, .mt-head, .mt-opt, .fp-opt,
+.chips .chip, .switch-row, .due-row, .quick button, .tabbar button {
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 body { margin: 0; background: var(--bg); color: var(--fg);
   font: 1rem/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
