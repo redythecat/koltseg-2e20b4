@@ -10,6 +10,14 @@ const MONTH_SHORT = ["jan.", "feb.", "márc.", "ápr.", "máj.", "jún.", "júl.
 export function isCollapsed(state, key) { return !!(state.db.settings.collapsed && state.db.settings.collapsed[key]); }
 function chev(open) { return el("span", { class: "chev" }, open ? "▾" : "▸"); }
 
+// Kereséshez: a dátum több írásmódja, hogy „08-04", „aug", „augusztus" és „4." is találjon.
+function dateSearchText(dateKey) {
+  if (!dateKey) return "";
+  const [y, m, d] = dateKey.split("-").map(Number);
+  if (!y || !m || !d) return String(dateKey);
+  return `${dateKey} ${MONTHS[m - 1]} ${MONTH_SHORT[m - 1]} ${d}. ${String(d).padStart(2, "0")}.`;
+}
+
 function fmtDay(dateKey) {
   const [, m, d] = dateKey.split("-").map(Number);
   return `${MONTH_SHORT[m - 1]} ${d}.`;
@@ -156,7 +164,7 @@ export function renderMonthView(state, h) {
   const pinned = renderRemindersPinned(state, h); if (pinned) wrap.append(pinned);
 
   const q = (state.search || "").trim().toLowerCase();
-  wrap.append(el("input", { id: "kiadas-search", value: state.search || "", placeholder: "Keresés (név vagy üzlet)", oninput: e => h.onSearchInput(e.target.value), style: "margin:10px 0 8px" }));
+  wrap.append(el("input", { id: "kiadas-search", value: state.search || "", placeholder: "Keresés (név, üzlet vagy dátum)", oninput: e => h.onSearchInput(e.target.value), style: "margin:10px 0 8px" }));
   wrap.append(el("button", { class: "primary", onclick: h.onAddItem, style: "width:100%;margin:0 0 10px" }, "Új tétel"));
   wrap.append(renderMonthTotal(state, h));
 
@@ -169,7 +177,7 @@ export function renderMonthView(state, h) {
   let shownAny = false;
   for (const c of db.categories.slice().sort((a, b) => a.order - b.order)) {
     let items = m.items.filter(i => i.categoryId === c.id);
-    if (q) items = items.filter(it => (it.name + " " + (it.store || "")).toLowerCase().includes(q));
+    if (q) items = items.filter(it => (it.name + " " + (it.store || "") + " " + dateSearchText(it.date)).toLowerCase().includes(q));
     if (q && !items.length) continue;
     shownAny = true;
     const key = "cat:" + c.id;
@@ -457,12 +465,12 @@ export function renderTransfersView(state, h) {
   wrap.append(renderPageHead(state, h, "Pénzmozgás"));
 
   const q = (state.transferSearch || "").trim().toLowerCase();
-  wrap.append(el("input", { id: "pm-search", value: state.transferSearch || "", placeholder: "Keresés (megnevezés vagy partner)", oninput: e => h.onTransferSearch(e.target.value), style: "margin-bottom:12px" }));
+  wrap.append(el("input", { id: "pm-search", value: state.transferSearch || "", placeholder: "Keresés (megnevezés, partner vagy dátum)", oninput: e => h.onTransferSearch(e.target.value), style: "margin-bottom:12px" }));
 
   for (const [dir, title] of [["in", "Bejövő"], ["out", "Kimenő"], ["swap", "Átvezetés"]]) {
     const all = m.transfers.filter(t => t.dir === dir);
     const sum = all.reduce((s, t) => s + t.amount, 0);
-    const list = q ? all.filter(t => (t.name + " " + (t.partner || "")).toLowerCase().includes(q)) : all;
+    const list = q ? all.filter(t => (t.name + " " + (t.partner || "") + " " + dateSearchText(t.date)).toLowerCase().includes(q)) : all;
     if (q && !list.length) continue;
     const key = "tr:" + dir;
     const open = q ? true : !isCollapsed(state, key);

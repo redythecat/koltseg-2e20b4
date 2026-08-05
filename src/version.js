@@ -1,6 +1,12 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.26", date: "2026-08-05", notes: [
+      "Sok kategóriánál is elérhető mindegyik: a választó ablakok (pl. blokk-bevitelnél a kategória átjavítása) mostantól görgethetők.",
+      "Kereshetsz dátumra is a Kiadásoknál és a Pénzmozgásnál — működik a „08-04”, a „2026-08-04”, az „aug.” és az „augusztus” is.",
+    ],
+  },
+  {
     v: "2.25", date: "2026-08-04", notes: [
       "Egységes oldalfejléc: a lap címe (Kiadások / Pénzmozgás / Áttekintő) és a hónapváltó egy sorban, halvány kiemelő kerettel — a Kiadások oldal is kapott címet.",
       "A fejlécben az év és a hónap mellől elmaradt a fölösleges legördülő-nyíl (koppintásra ugyanúgy választható).",
