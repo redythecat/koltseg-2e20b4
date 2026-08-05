@@ -6,7 +6,7 @@ import {
   addTransfer, updateTransfer, deleteTransfer,
   addReminder, updateReminder, deleteReminder, toggleReminderPaid, remindersDueOn, daysBetween,
   setCategoryBudget, reorderCategories, deleteItemTemplate, updateItemTemplate, todayKey,
-  deleteTransferTemplate, updateTransferTemplate,
+  deleteTransferTemplate, updateTransferTemplate, emptyFilters, filterRange, hasActiveFilters,
 } from "./model.js";
 import { decodeImport } from "./codec.js";
 import { downloadXlsx, expenseRows, transferRows } from "./xlsx.js";
@@ -18,7 +18,7 @@ import {
   renderMonthView, renderItemForm, renderCategoryManager,
   renderTransfersView, renderTransferForm, renderOverview,
   renderImportView, renderRemindersView, renderReminderForm, renderSettings, renderRestoreView,
-  renderTemplatesManager, renderTemplateForm, renderTransferTemplateForm,
+  renderTemplatesManager, renderTemplateForm, renderTransferTemplateForm, renderFilterPanel,
 } from "./ui.js";
 
 function currentMonthKey() {
@@ -51,6 +51,9 @@ const state = {
   tplSearch: "",
   transferSearch: "",
   monthTotalOpen: false,
+  filters: emptyFilters(),   // szándékosan NEM mentjük: appindításnál mindig üres
+  filterOpen: {},            // melyik szűrő-szakasz van lenyitva a panelben
+  filterTotalMode: "filtered",
 };
 
 applyTheme(state.db.settings.theme);
@@ -133,6 +136,14 @@ async function removeTransferTemplate(t) {
   if (!(await confirmModal(`Törlöd a(z) "${t.name}" mentett pénzmozgást?`, { okText: "Törlés", cancelText: "Mégse", danger: true }))) return false;
   deleteTransferTemplate(state.db, t.id); commit(); return true;
 }
+// Szűrő-panel: a tartalom helyben újrarajzolódik, a lista pedig a panel bezárásakor frissül.
+function openFilterPanel() {
+  const host = document.createElement("div");
+  const redraw = () => host.replaceChildren(renderFilterPanel(state, handlers, redraw));
+  redraw();
+  panelModal("Szűrők", host, () => render());
+}
+
 function openTemplateModal(id) {
   const t = state.db.templates.items.find(x => x.id === id);
   if (!t) return;
@@ -197,7 +208,11 @@ const handlers = {
     changelogModal(recent.length ? recent : [CHANGELOG[0]]);
   },
   onAddItem: () => { state.editing = { type: "item", id: null }; render(); },
-  onEditItem: (id) => { state.editing = { type: "item", id }; render(); },
+  onEditItem: (id, monthKey) => {
+    // Dátum-szűrésnél más hónap tétele is látszik — ilyenkor átváltunk arra a hónapra.
+    if (monthKey && monthKey !== state.month) state.month = monthKey;
+    state.editing = { type: "item", id }; render();
+  },
   onAddTransfer: (dir) => { state.editing = { type: "transfer", id: null, dir }; render(); },
   onEditTransfer: (id) => { state.editing = { type: "transfer", id }; render(); },
   onTransferSearch: (v, { noFocus } = {}) => {
@@ -209,7 +224,11 @@ const handlers = {
   },
   onManageCategories: () => { state.view = "categories"; render(); },
   onToggleMonthTotal: () => { state.monthTotalOpen = !state.monthTotalOpen; render(); },
-  onSetMonthTotalMode: (m) => { state.db.settings.monthTotalMode = m; state.monthTotalOpen = false; commit(); },
+  onSetMonthTotalMode: (m, whileFiltering) => {
+    state.monthTotalOpen = false;
+    if (whileFiltering) { state.filterTotalMode = m; render(); return; }  // szűrés alatt nem írjuk át a beállítást
+    state.db.settings.monthTotalMode = m; commit();
+  },
   onOpenTemplates: () => { state.view = "templates"; state.tplSearch = ""; render(); },
   onTplSearch: (v) => {
     state.tplSearch = v;
@@ -227,6 +246,19 @@ const handlers = {
     if (noFocus) return;   // dátumválasztás/törlés után ne ugorjon fel a billentyűzet
     const si = document.getElementById("kiadas-search");
     if (si) { si.focus(); const n = si.value.length; try { si.setSelectionRange(n, n); } catch { /* nem szöveges */ } }
+  },
+  onOpenFilters: () => openFilterPanel(),
+  onToggleFilterValue: (field, value) => {
+    const cur = state.filters[field] || [];
+    state.filters[field] = cur.includes(value) ? cur.filter(v => v !== value) : [...cur, value];
+    render();
+  },
+  onClearFilterDate: () => { const f = state.filters; f.day = ""; f.from = ""; f.to = ""; render(); },
+  onSetFilterPrice: (min, max) => { state.filters.min = min; state.filters.max = max; render(); },
+  onClearFilters: () => {
+    state.filters = emptyFilters();
+    state.filterTotalMode = "filtered";
+    render();
   },
   onOpenReminders: () => { state.view = "reminders"; render(); },
   onAddReminder: () => { state.editing = { type: "reminder", id: null }; render(); },

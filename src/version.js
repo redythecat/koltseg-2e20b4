@@ -1,6 +1,16 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.28", date: "2026-08-05", notes: [
+      "Új szűrő a Kiadásoknál: a keresősáv jobb szélén a szűrő-gomb. Szűrhetsz üzletre, kategóriára, fizetési módra, dátumra (egy nap vagy időszak) és összegre (csúszkával vagy beírt Ft-tól/Ft-ig).",
+      "Egy szűrőn belül több érték is választható, és mindegyik listában ott az „Összes”.",
+      "A bekapcsolt szűrők színes címkékként látszanak a keresősáv alatt — a címkére koppintva törlődik az adott szűrő. A szűrő-gombon szám jelzi, mennyi aktív.",
+      "Dátumra szűrve az app minden hónapban keres, nem csak a most látottban (a tételnél ilyenkor a dátum is látszik).",
+      "A keresés és a szűrők együtt dolgoznak, és szűrés alatt a havi összeg helyén a szűrt tételek összege az alapértelmezett (lenyitva továbbra is átállítható).",
+      "A szűrők az app bezárásakor törlődnek, hogy később ne tűnjön úgy, eltűntek az adatok.",
+    ],
+  },
+  {
     v: "2.27", date: "2026-08-05", notes: [
       "A keresősáv jobb oldalán naptár-ikon: koppintásra a telefon saját dátumválasztója nyílik, és a választott nap magától bekerül a keresőbe. Mellette egy × törli a keresést.",
     ],

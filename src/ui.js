@@ -1,4 +1,5 @@
-import { monthOverview, categoryTotal, remindersDueInMonth, occurrencesInMonth, dueSummaryForMonth, todayKey, monthComparison, monthStats, yearTotals, yearStats } from "./model.js";
+import { monthOverview, categoryTotal, remindersDueInMonth, occurrencesInMonth, dueSummaryForMonth, todayKey, monthComparison, monthStats, yearTotals, yearStats,
+  filterRange, dateBounds, hasActiveFilters, isCrossMonth, collectItems } from "./model.js";
 import { ACCENTS } from "./theme.js";
 import { toast } from "./dialog.js";
 import { APP_VERSION, APP_DATE } from "./version.js";
@@ -12,9 +13,11 @@ function chev(open) { return el("span", { class: "chev" }, open ? "▾" : "▸")
 
 const CAL_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>';
 
-// Keresősáv naptár-ikonnal (dátumra szűrés) és törlő X-szel.
-// onInput(érték, { noFocus }) — dátumválasztás után nem kérjük vissza a billentyűzetet.
-function searchRow(id, value, placeholder, onInput) {
+const FILTER_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>';
+
+// Keresősáv: törlő X, mellette vagy naptár-ikon (dátumra szűrés), vagy szűrő-gomb.
+// onInput(érték, { noFocus }) — koppintós művelet után nem kérjük vissza a billentyűzetet.
+function searchRow(id, value, placeholder, onInput, opts = {}) {
   const input = el("input", { id, class: "search-input", value: value || "", placeholder,
     oninput: e => onInput(e.target.value) });
   const actions = el("div", { class: "sr-actions" });
@@ -22,14 +25,153 @@ function searchRow(id, value, placeholder, onInput) {
     actions.append(el("button", { class: "sr-btn sr-clear", type: "button", "aria-label": "Keresés törlése",
       onclick: () => onInput("", { noFocus: true }) }, "×"));
   }
-  // A dátum-beviteli mező átlátszóan az ikon fölött ül: koppintásra a telefon saját naptára nyílik.
-  const dateInput = el("input", { type: "date", class: "sr-date", "aria-label": "Keresés dátum szerint",
-    value: /^\d{4}-\d{2}-\d{2}$/.test(value || "") ? value : "",
-    onchange: e => { if (e.target.value) onInput(e.target.value, { noFocus: true }); } });
-  const calBtn = el("span", { class: "sr-btn sr-cal", title: "Keresés dátum szerint" }, dateInput);
-  calBtn.insertAdjacentHTML("afterbegin", CAL_SVG);
-  actions.append(calBtn);
+  if (opts.onOpenFilter) {
+    const btn = el("button", { class: "sr-btn sr-filter" + (opts.filterCount ? " on" : ""), type: "button",
+      "aria-label": "Szűrők", title: "Szűrők", onclick: opts.onOpenFilter });
+    btn.insertAdjacentHTML("afterbegin", FILTER_SVG);
+    if (opts.filterCount) btn.append(el("span", { class: "sr-badge" }, String(opts.filterCount)));
+    actions.append(btn);
+  } else {
+    // A dátum-mező átlátszóan az ikon fölött ül: koppintásra a telefon saját naptára nyílik.
+    const dateInput = el("input", { type: "date", class: "sr-date", "aria-label": "Keresés dátum szerint",
+      value: /^\d{4}-\d{2}-\d{2}$/.test(value || "") ? value : "",
+      onchange: e => { if (e.target.value) onInput(e.target.value, { noFocus: true }); } });
+    const calBtn = el("span", { class: "sr-btn sr-cal", title: "Keresés dátum szerint" }, dateInput);
+    calBtn.insertAdjacentHTML("afterbegin", CAL_SVG);
+    actions.append(calBtn);
+  }
   return el("div", { class: "search-row" }, input, actions);
+}
+
+// Aktív szűrők felsorolása a keresősáv alatt. Az EGÉSZ címkére koppintva törlődik az adott szűrő.
+function renderFilterChips(state, h) {
+  const { filters: f } = state;
+  const { maxPrice } = filterRange(state.db);
+  const chips = [];
+  const catName = id => (state.db.categories.find(c => c.id === id) || {}).name || "?";
+  for (const s of f.stores || []) chips.push({ label: s, onClear: () => h.onToggleFilterValue("stores", s) });
+  for (const id of f.categoryIds || []) chips.push({ label: catName(id), onClear: () => h.onToggleFilterValue("categoryIds", id) });
+  for (const p of f.payments || []) chips.push({ label: p === "cash" ? "készpénz" : "kártya", onClear: () => h.onToggleFilterValue("payments", p) });
+  const b = dateBounds(f);
+  if (b.from || b.to) {
+    const lbl = b.from && b.to ? (b.from === b.to ? fmtFullDay(b.from) : `${fmtFullDay(b.from)} – ${fmtFullDay(b.to)}`)
+      : (b.from ? `${fmtFullDay(b.from)}-től` : `${fmtFullDay(b.to)}-ig`);
+    chips.push({ label: lbl, onClear: () => h.onClearFilterDate() });
+  }
+  if (f.min != null && f.min > 0) chips.push({ label: `${ft(f.min)}-tól`, onClear: () => h.onSetFilterPrice(0, f.max) });
+  if (f.max != null && f.max < maxPrice) chips.push({ label: `${ft(f.max)}-ig`, onClear: () => h.onSetFilterPrice(f.min, maxPrice) });
+  if (!chips.length) return null;
+  const row = el("div", { class: "chips" });
+  for (const c of chips) {
+    row.append(el("button", { class: "chip", type: "button", title: "Szűrő törlése", onclick: c.onClear },
+      el("span", {}, c.label), el("span", { class: "chip-x" }, "×")));
+  }
+  row.append(el("button", { class: "chip chip-all", type: "button", onclick: h.onClearFilters }, "Mind törlése"));
+  return row;
+}
+
+function fmtFullDay(dateKey) {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  return `${MONTH_SHORT[m - 1]} ${d}.`;
+}
+
+// Szűrő-panel tartalma. Minden szakasz külön lecsukható; a változás azonnal érvényes.
+// A redraw() a panelt rajzolja újra helyben (a lista a panel bezárásakor frissül).
+export function renderFilterPanel(state, h, redraw) {
+  const f = state.filters;
+  const { stores, maxPrice } = filterRange(state.db);
+  const cats = state.db.categories.slice().sort((a, b) => a.order - b.order);
+  const wrap = el("div", { class: "fp" });
+
+  // Egy lecsukható szakasz. A fejlécben a jelenlegi választás összefoglalója látszik.
+  const section = (key, title, summary, buildBody) => {
+    const open = !!state.filterOpen[key];
+    const box = el("div", { class: "fp-sec" });
+    box.append(el("button", { class: "fp-head", type: "button",
+      onclick: () => { state.filterOpen[key] = !open; redraw(); } },
+      el("span", { class: "left" }, el("span", { class: "chev" }, open ? "▾" : "▸"), el("span", { class: "fp-title" }, title)),
+      el("span", { class: "fp-sum" }, summary)));
+    if (open) box.append(buildBody());
+    wrap.append(box);
+  };
+
+  // Több választás egy szűrőn belül; legfelül az „Összes" (= nincs szűrés erre).
+  const multi = (field, options, labelOf) => {
+    const sel = f[field] || [];
+    const list = el("div", { class: "fp-list" });
+    list.append(el("button", { class: "fp-opt" + (sel.length ? "" : " sel"), type: "button",
+      onclick: () => { f[field] = []; redraw(); } }, "Összes"));
+    for (const v of options) {
+      const on = sel.includes(v);
+      list.append(el("button", { class: "fp-opt" + (on ? " sel" : ""), type: "button",
+        onclick: () => { h.onToggleFilterValue(field, v); redraw(); } },
+        el("span", {}, labelOf ? labelOf(v) : v), el("span", { class: "fp-tick" }, on ? "✓" : "")));
+    }
+    return list;
+  };
+
+  const nameOf = id => (cats.find(c => c.id === id) || {}).name || "?";
+  section("store", "Üzlet", (f.stores || []).length ? f.stores.join(", ") : "Összes",
+    () => stores.length ? multi("stores", stores) : el("div", { class: "muted", style: "padding:0.25rem 0 0.5rem" }, "Még nincs üzlet a tételeknél."));
+  section("cat", "Kategória", (f.categoryIds || []).length ? f.categoryIds.map(nameOf).join(", ") : "Összes",
+    () => multi("categoryIds", cats.map(c => c.id), nameOf));
+  section("pay", "Fizetés", (f.payments || []).length ? f.payments.map(p => p === "cash" ? "készpénz" : "kártya").join(", ") : "Összes",
+    () => multi("payments", ["card", "cash"], p => p === "cash" ? "Készpénz" : "Kártya"));
+
+  const b = dateBounds(f);
+  const dateSummary = b.from || b.to
+    ? (b.from === b.to ? fmtFullDay(b.from) : `${b.from ? fmtFullDay(b.from) : "…"} – ${b.to ? fmtFullDay(b.to) : "…"}`)
+    : "Összes";
+  section("date", "Dátum", dateSummary, () => {
+    const body = el("div", {});
+    const modeRow = el("div", { class: "fp-list", style: "flex-direction:row;gap:0.375rem" });
+    for (const [val, lab] of [["day", "Egy nap"], ["range", "Időszak"]]) {
+      modeRow.append(el("button", { class: "fp-opt" + (f.dateMode === val ? " sel" : ""), type: "button",
+        style: "flex:1;justify-content:center", onclick: () => { f.dateMode = val; redraw(); } }, lab));
+    }
+    body.append(modeRow);
+    if (f.dateMode === "range") {
+      body.append(el("div", { class: "row" },
+        el("div", {}, el("label", {}, "Ettől"), el("input", { type: "date", value: f.from || "", onchange: e => { f.from = e.target.value; redraw(); } })),
+        el("div", {}, el("label", {}, "Eddig"), el("input", { type: "date", value: f.to || "", onchange: e => { f.to = e.target.value; redraw(); } }))));
+    } else {
+      body.append(el("label", {}, "Nap"));
+      body.append(el("input", { type: "date", value: f.day || "", onchange: e => { f.day = e.target.value; redraw(); } }));
+    }
+    body.append(el("p", { class: "muted", style: "margin:0.5rem 0 0.25rem;font-size:0.8125rem" },
+      "Dátum-szűrésnél az app minden hónapban keres, nem csak a most látottban."));
+    if (b.from || b.to) body.append(el("button", { class: "ghost", style: "width:100%;margin-top:0.25rem", onclick: () => { h.onClearFilterDate(); redraw(); } }, "Dátum-szűrő törlése"));
+    return body;
+  });
+
+  const min = f.min ?? 0, max = f.max ?? maxPrice;
+  const priceSummary = maxPrice === 0 ? "—" : (min > 0 || max < maxPrice) ? `${ft(min)} – ${ft(max)}` : "Összes";
+  section("price", "Összeg", priceSummary, () => {
+    const body = el("div", {});
+    if (maxPrice === 0) { body.append(el("div", { class: "muted", style: "padding:0.25rem 0 0.5rem" }, "Még nincs tétel, amiből sávot képezhetnék.")); return body; }
+    const rMin = el("input", { type: "range", class: "fp-range", min: "0", max: String(maxPrice), step: "1", value: String(min) });
+    const rMax = el("input", { type: "range", class: "fp-range", min: "0", max: String(maxPrice), step: "1", value: String(max) });
+    const nMin = el("input", { type: "number", inputmode: "numeric", min: "0", max: String(maxPrice), value: String(min) });
+    const nMax = el("input", { type: "number", inputmode: "numeric", min: "0", max: String(maxPrice), value: String(max) });
+    // A csúszka és a mező ugyanazt állítja; a min sosem lépheti túl a maxot.
+    const apply = (lo, hi) => { h.onSetFilterPrice(lo, hi); redraw(); };
+    rMin.oninput = () => apply(Math.min(Number(rMin.value), Number(rMax.value)), max);
+    rMax.oninput = () => apply(min, Math.max(Number(rMax.value), Number(rMin.value)));
+    nMin.onchange = () => apply(Math.max(0, Math.min(Number(nMin.value) || 0, max)), max);
+    nMax.onchange = () => apply(min, Math.min(maxPrice, Math.max(Number(nMax.value) || 0, min)));
+    body.append(el("label", {}, `Legalább — ${ft(min)}`), rMin);
+    body.append(el("label", {}, `Legfeljebb — ${ft(max)}`), rMax);
+    body.append(el("div", { class: "row", style: "margin-top:0.5rem" },
+      el("div", {}, el("label", {}, "Ft-tól"), nMin), el("div", {}, el("label", {}, "Ft-ig"), nMax)));
+    if (min > 0 || max < maxPrice) body.append(el("button", { class: "ghost", style: "width:100%;margin-top:0.5rem", onclick: () => apply(0, maxPrice) }, "Összeg-szűrő törlése"));
+    return body;
+  });
+
+  if (hasActiveFilters(f, maxPrice)) {
+    wrap.append(el("button", { class: "ghost", style: "width:100%;margin-top:0.5rem;color:var(--neg)",
+      onclick: () => { h.onClearFilters(); redraw(); } }, "Minden szűrő törlése"));
+  }
+  return wrap;
 }
 
 // Kereséshez: a dátum több írásmódja, hogy „08-04", „aug", „augusztus" és „4." is találjon.
@@ -154,25 +296,32 @@ const FREQ_LABEL = { none: "egyszeri", daily: "napi", weekly: "heti", monthly: "
 
 // --- Hónap nézet ---
 
-function renderMonthTotal(state, h) {
+// filtered: { sum, count } ha épp szűrés/keresés van érvényben — ilyenkor a szűrt
+// összeg az elsődleges, de lenyitva továbbra is átállítható a havi/bolti értékre.
+function renderMonthTotal(state, h, filtered) {
   const o = monthOverview(state.db, state.month);
   const total = o.totalExpense, items = o.expenseItems;
-  if (o.expenseOut <= 0) {
+  if (!filtered && o.expenseOut <= 0) {
     return el("div", { class: "month-total" }, el("span", { class: "mt-label" }, "Havi kiadás"), el("span", { class: "mt-amount" }, ft(total)));
   }
-  const mode = state.db.settings.monthTotalMode === "items" ? "items" : "total";
-  const primaryVal = mode === "items" ? items : total;
-  const primaryLabel = mode === "items" ? "Bolti kiadás" : "Havi összes";
+  const saved = state.db.settings.monthTotalMode === "items" ? "items" : "total";
+  // Szűréskor alapból a szűrt összeg, de a munkamenetre felülbírálható.
+  const mode = filtered ? (state.filterTotalMode || "filtered") : saved;
+  const vals = { total, items, filtered: filtered ? filtered.sum : 0 };
+  const labels = { total: "Havi összes", items: "Csak bolti (pénzmozgás nélkül)",
+    filtered: filtered ? `Szűrt tételek (${filtered.count} db)` : "Szűrt tételek" };
   const open = state.monthTotalOpen;
-  const box = el("div", { class: "month-total stack" });
+  const box = el("div", { class: "month-total stack" + (filtered && mode === "filtered" ? " filtered" : "") });
   box.append(el("button", { class: "mt-head", onclick: h.onToggleMonthTotal },
-    el("span", { class: "mt-label" }, primaryLabel),
-    el("span", { class: "right" }, el("span", { class: "mt-amount" }, ft(primaryVal)), el("span", { class: "chev-sm" }, open ? "▾" : "▸"))));
+    el("span", { class: "mt-label" }, labels[mode]),
+    el("span", { class: "right" }, el("span", { class: "mt-amount" }, ft(vals[mode])), el("span", { class: "chev-sm" }, open ? "▾" : "▸"))));
   if (open) {
-    const opt = (m, label, val) => el("button", { class: "mt-opt" + (mode === m ? " sel" : ""), onclick: () => h.onSetMonthTotalMode(m) },
-      el("span", {}, label), el("span", { class: "v" }, ft(val)));
-    box.append(opt("total", "Havi összes", total));
-    box.append(opt("items", "Csak bolti (pénzmozgás nélkül)", items));
+    const opt = (m) => el("button", { class: "mt-opt" + (mode === m ? " sel" : ""),
+      onclick: () => h.onSetMonthTotalMode(m, !!filtered) },
+      el("span", {}, labels[m]), el("span", { class: "v" }, ft(vals[m])));
+    if (filtered) box.append(opt("filtered"));
+    box.append(opt("total"));
+    box.append(opt("items"));
   }
   return box;
 }
@@ -186,48 +335,75 @@ export function renderMonthView(state, h) {
   const pinned = renderRemindersPinned(state, h); if (pinned) wrap.append(pinned);
 
   const q = (state.search || "").trim().toLowerCase();
-  const sr = searchRow("kiadas-search", state.search || "", "Keresés (név, üzlet vagy dátum)", h.onSearchInput);
+  const { maxPrice } = filterRange(db);
+  const filtering = !!q || hasActiveFilters(state.filters, maxPrice);
+  const activeCount = filterActiveCount(state, maxPrice);
+  const sr = searchRow("kiadas-search", state.search || "", "Keresés (név, üzlet vagy dátum)", h.onSearchInput,
+    { onOpenFilter: h.onOpenFilters, filterCount: activeCount });
   sr.style.margin = "10px 0 8px";
   wrap.append(sr);
+  const chips = renderFilterChips(state, h); if (chips) wrap.append(chips);
   wrap.append(el("button", { class: "primary", onclick: h.onAddItem, style: "width:100%;margin:0 0 10px" }, "Új tétel"));
-  wrap.append(renderMonthTotal(state, h));
+
+  // A szűrőn/keresésen átment tételek (dátum-szűrésnél több hónapból is).
+  const matchText = it => (it.name + " " + (it.store || "") + " " + dateSearchText(it.date)).toLowerCase();
+  let shown = collectItems(db, month, state.filters, maxPrice);
+  if (q) shown = shown.filter(it => matchText(it).includes(q));
+  const shownSum = Math.round(shown.reduce((sum, it) => sum + it.price, 0));
+  const cross = isCrossMonth(state.filters);
+
+  wrap.append(renderMonthTotal(state, h, filtering ? { sum: shownSum, count: shown.length } : null));
 
   const m = db.months[month] || { items: [], transfers: [] };
-  if (!q && m.items.length === 0) {
+  if (!filtering && m.items.length === 0) {
     wrap.append(el("div", { class: "empty-hint" },
       el("strong", {}, "Még nincs tétel ebben a hónapban"),
       el("div", { class: "muted" }, "Vedd fel az elsőt az „Új tétel” gombbal, vagy olvass be egy blokkot: Beállítások → Blokk bevitel.")));
   }
   let shownAny = false;
   for (const c of db.categories.slice().sort((a, b) => a.order - b.order)) {
-    let items = m.items.filter(i => i.categoryId === c.id);
-    if (q) items = items.filter(it => (it.name + " " + (it.store || "") + " " + dateSearchText(it.date)).toLowerCase().includes(q));
-    if (q && !items.length) continue;
+    const items = shown.filter(i => i.categoryId === c.id);
+    if (filtering && !items.length) continue;
     shownAny = true;
     const key = "cat:" + c.id;
-    const open = q ? true : !isCollapsed(state, key);
-    const total = categoryTotal(db, month, c.id);
-    const over = c.budget && total > c.budget;
+    const open = filtering ? true : !isCollapsed(state, key);
+    // Szűréskor a szűrt tételek összege látszik; egyébként a havi kategória-összeg (kerettel).
+    const total = filtering ? Math.round(items.reduce((sum, i) => sum + i.price, 0)) : categoryTotal(db, month, c.id);
+    const over = !filtering && c.budget && total > c.budget;
     const card = el("div", { class: "card" });
     card.append(el("button", { class: "collapse-head", onclick: () => h.onToggleCollapse(key) },
       el("span", { class: "left" }, chev(open), el("span", { class: "sec-title" }, c.name)),
-      el("span", { class: "sec-sum", style: over ? "color:var(--neg)" : "" }, c.budget ? `${ft(total)} / ${ft(c.budget)}` : ft(total))));
-    if (c.budget) {
+      el("span", { class: "sec-sum", style: over ? "color:var(--neg)" : "" },
+        (!filtering && c.budget) ? `${ft(total)} / ${ft(c.budget)}` : ft(total))));
+    if (!filtering && c.budget) {
       const pct = Math.min(100, Math.round((total / c.budget) * 100));
       card.append(el("div", { class: "bar" }, el("span", { style: `width:${pct}%` + (over ? ";background:var(--neg)" : "") })));
     }
     if (open) {
       for (const it of items) {
-        card.append(el("div", { class: "item", onclick: () => h.onEditItem(it.id) },
-          el("div", {}, el("div", {}, it.name), el("small", {}, `${it.qty} db · ${it.store || "—"} · ${it.payment === "cash" ? "kp" : "kártya"}`)),
+        // Több hónapra szűrve a dátum is kell, különben nem tudnád, melyik hónapból jött.
+        const meta = `${it.qty} db · ${it.store || "—"} · ${it.payment === "cash" ? "kp" : "kártya"}` +
+          (cross && it.date ? ` · ${it.date}` : "");
+        card.append(el("div", { class: "item", onclick: () => h.onEditItem(it.id, it.monthKey) },
+          el("div", {}, el("div", {}, it.name), el("small", {}, meta)),
           el("div", {}, ft(it.price))));
       }
       if (!items.length) card.append(el("div", { class: "item muted" }, "Nincs tétel"));
     }
     wrap.append(card);
   }
-  if (q && !shownAny) wrap.append(el("div", { class: "card muted" }, "Nincs találat."));
+  if (filtering && !shownAny) wrap.append(el("div", { class: "card muted" }, "Nincs találat."));
   return wrap;
+}
+
+// Hány szűrő van bekapcsolva? (a jelvényhez a keresősáv szűrő-gombján)
+function filterActiveCount(state, maxPrice) {
+  const f = state.filters; if (!f) return 0;
+  let n = (f.stores || []).length + (f.categoryIds || []).length + (f.payments || []).length;
+  const b = dateBounds(f); if (b.from || b.to) n++;
+  if (f.min != null && f.min > 0) n++;
+  if (f.max != null && f.max < maxPrice) n++;
+  return n;
 }
 
 // --- Tétel űrlap ---

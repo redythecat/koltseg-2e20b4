@@ -367,3 +367,73 @@ export function dueSummaryForMonth(db, monthKey, todayKey) {
     return { reminder, date, paid, daysUntil, urgent: !paid && daysUntil <= 3 };
   });
 }
+
+// --- Kiadás-szűrő (tiszta logika) ---
+
+// Szűrő-tartomány MINDEN hónapból: így a lista és a csúszka nem ugrál hónapváltáskor,
+// és olyan üzletre is szűrhetsz, ami csak egy másik hónapban szerepel.
+export function filterRange(db) {
+  const stores = new Set();
+  let maxPrice = 0;
+  for (const m of Object.values(db.months || {})) {
+    for (const i of m.items || []) {
+      const s = (i.store || "").trim();
+      if (s) stores.add(s);
+      maxPrice = Math.max(maxPrice, Math.round(i.price));
+    }
+  }
+  return { stores: [...stores].sort((a, b) => a.localeCompare(b, "hu")), maxPrice };
+}
+
+export function emptyFilters() {
+  return { stores: [], categoryIds: [], payments: [], dateMode: "day", day: "", from: "", to: "", min: null, max: null };
+}
+
+// A dátum-szűrő tól-ig alakban ("Egy nap" esetén a két érték azonos).
+export function dateBounds(f) {
+  if (!f) return { from: "", to: "" };
+  if (f.dateMode === "range") return { from: f.from || "", to: f.to || "" };
+  return f.day ? { from: f.day, to: f.day } : { from: "", to: "" };
+}
+
+export function hasActiveFilters(f, maxPrice) {
+  if (!f) return false;
+  if ((f.stores || []).length || (f.categoryIds || []).length || (f.payments || []).length) return true;
+  const b = dateBounds(f);
+  if (b.from || b.to) return true;
+  if (f.min != null && f.min > 0) return true;
+  if (f.max != null && maxPrice != null && f.max < maxPrice) return true;
+  return false;
+}
+
+export function matchesFilters(item, f, maxPrice) {
+  if (!f) return true;
+  if ((f.stores || []).length && !f.stores.includes((item.store || "").trim())) return false;
+  if ((f.categoryIds || []).length && !f.categoryIds.includes(item.categoryId)) return false;
+  if ((f.payments || []).length && !f.payments.includes(item.payment || "card")) return false;
+  const b = dateBounds(f);
+  if (b.from && (!item.date || item.date < b.from)) return false;
+  if (b.to && (!item.date || item.date > b.to)) return false;
+  const price = Math.round(item.price);
+  if (f.min != null && f.min > 0 && price < f.min) return false;
+  if (f.max != null && maxPrice != null && f.max < maxPrice && price > f.max) return false;
+  return true;
+}
+
+// Dátum-szűrés esetén minden hónapban keresünk, különben csak a látott hónapban.
+export function isCrossMonth(f) {
+  const b = dateBounds(f);
+  return !!(b.from || b.to);
+}
+
+// A szűrőn átmenő tételek — mindegyik mellé odatesszük, melyik hónapból jött.
+export function collectItems(db, monthKey, f, maxPrice) {
+  const keys = isCrossMonth(f) ? Object.keys(db.months || {}).sort() : [monthKey];
+  const out = [];
+  for (const k of keys) {
+    for (const it of (db.months[k] || {}).items || []) {
+      if (matchesFilters(it, f, maxPrice)) out.push({ ...it, monthKey: k });
+    }
+  }
+  return out;
+}
