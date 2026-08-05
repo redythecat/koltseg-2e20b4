@@ -77,7 +77,7 @@ function fmtFullDay(dateKey) {
 
 // Szűrő-panel tartalma. Minden szakasz külön lecsukható; a változás azonnal érvényes.
 // A redraw() a panelt rajzolja újra helyben (a lista a panel bezárásakor frissül).
-export function renderFilterPanel(state, h, redraw) {
+export function renderFilterPanel(state, h, redraw, onApply) {
   const f = state.filters;
   const { stores, maxPrice } = filterRange(state.db);
   const cats = state.db.categories.slice().sort((a, b) => a.order - b.order);
@@ -88,10 +88,14 @@ export function renderFilterPanel(state, h, redraw) {
     const open = !!state.filterOpen[key];
     const box = el("div", { class: "fp-sec" });
     box.append(el("button", { class: "fp-head", type: "button",
-      onclick: () => { state.filterOpen[key] = !open; redraw(); } },
+      onclick: () => { state.filterOpen[key] = !open; state.filterJust = !open ? key : null; redraw(); } },
       el("span", { class: "left" }, el("span", { class: "chev" }, open ? "▾" : "▸"), el("span", { class: "fp-title" }, title)),
       el("span", { class: "fp-sum" }, summary)));
-    if (open) box.append(buildBody());
+    if (open) {
+      const body = buildBody();
+      if (state.filterJust === key) body.classList.add("reveal");
+      box.append(body);
+    }
     wrap.append(box);
   };
 
@@ -138,8 +142,6 @@ export function renderFilterPanel(state, h, redraw) {
       body.append(el("label", {}, "Nap"));
       body.append(el("input", { type: "date", value: f.day || "", onchange: e => { f.day = e.target.value; redraw(); } }));
     }
-    body.append(el("p", { class: "muted", style: "margin:0.5rem 0 0.25rem;font-size:0.8125rem" },
-      "Bármelyik nap választható, régebbi hónapból is — ilyenkor az app a többi hónap tételei közt is keres, nem csak abban, amit épp nézel."));
     if (b.from || b.to) body.append(el("button", { class: "ghost", style: "width:100%;margin-top:0.25rem", onclick: () => { h.onClearFilterDate(); redraw(); } }, "Dátum-szűrő törlése"));
     return body;
   });
@@ -181,10 +183,13 @@ export function renderFilterPanel(state, h, redraw) {
     return body;
   });
 
+  wrap.append(el("button", { class: "primary", style: "width:100%;margin-top:0.75rem",
+    onclick: onApply }, "Szűrés"));
   if (hasActiveFilters(f, maxPrice)) {
     wrap.append(el("button", { class: "ghost", style: "width:100%;margin-top:0.5rem;color:var(--neg)",
       onclick: () => { h.onClearFilters(); redraw(); } }, "Minden szűrő törlése"));
   }
+  state.filterJust = null;   // csak az első kirajzoláskor animálunk
   return wrap;
 }
 
@@ -330,12 +335,14 @@ function renderMonthTotal(state, h, filtered) {
     el("span", { class: "mt-label" }, labels[mode]),
     el("span", { class: "right" }, el("span", { class: "mt-amount" }, ft(vals[mode])), el("span", { class: "chev-sm" }, open ? "▾" : "▸"))));
   if (open) {
+    const optsBox = el("div", { class: state.justToggled === "mt" ? "reveal" : "" });
     const opt = (m) => el("button", { class: "mt-opt" + (mode === m ? " sel" : ""),
       onclick: () => h.onSetMonthTotalMode(m, !!filtered) },
       el("span", {}, labels[m]), el("span", { class: "v" }, ft(vals[m])));
-    if (filtered) box.append(opt("filtered"));
-    box.append(opt("total"));
-    box.append(opt("items"));
+    if (filtered) optsBox.append(opt("filtered"));
+    optsBox.append(opt("total"));
+    optsBox.append(opt("items"));
+    box.append(optsBox);
   }
   return box;
 }
@@ -394,15 +401,17 @@ export function renderMonthView(state, h) {
       card.append(el("div", { class: "bar" }, el("span", { style: `width:${pct}%` + (over ? ";background:var(--neg)" : "") })));
     }
     if (open) {
+      const body = el("div", { class: state.justToggled === key ? "reveal" : "" });
       for (const it of items) {
         // Több hónapra szűrve a dátum is kell, különben nem tudnád, melyik hónapból jött.
         const meta = `${it.qty} db · ${it.store || "—"} · ${it.payment === "cash" ? "kp" : "kártya"}` +
           (cross && it.date ? ` · ${it.date}` : "");
-        card.append(el("div", { class: "item", onclick: () => h.onEditItem(it.id, it.monthKey) },
+        body.append(el("div", { class: "item", onclick: () => h.onEditItem(it.id, it.monthKey) },
           el("div", {}, el("div", {}, it.name), el("small", {}, meta)),
           el("div", {}, ft(it.price))));
       }
-      if (!items.length) card.append(el("div", { class: "item muted" }, "Nincs tétel"));
+      if (!items.length) body.append(el("div", { class: "item muted" }, "Nincs tétel"));
+      card.append(body);
     }
     wrap.append(card);
   }
@@ -439,7 +448,7 @@ function quickListBox(entries) {
   };
   const body = el("div", { style: "display:none" }, search, quick);
   let open = false;
-  header.onclick = () => { open = !open; body.style.display = open ? "" : "none"; chevSpan.textContent = open ? "▾" : "▸"; };
+  header.onclick = () => { open = !open; body.style.display = open ? "" : "none"; body.classList.toggle("reveal", open); chevSpan.textContent = open ? "▾" : "▸"; };
   return [header, body];
 }
 
@@ -697,17 +706,19 @@ export function renderTransfersView(state, h) {
       el("span", { class: "left" }, chev(open), el("span", { class: "sec-title" }, title)),
       el("span", { class: "sec-sum", style: sumStyle }, sign + ft(sum))));
     if (open) {
-      if (dir === "swap") card.append(el("div", { class: "muted", style: "font-size:0.8125rem;margin:0 0 4px" }, "Az átvezetések nem számítanak bele az összesítésekbe."));
+      const body = el("div", { class: state.justToggled === key ? "reveal" : "" });
+      if (dir === "swap") body.append(el("div", { class: "muted", style: "font-size:0.8125rem;margin:0 0 4px" }, "Az átvezetések nem számítanak bele az összesítésekbe."));
       for (const t of list) {
         const small = dir === "swap"
           ? `${t.date || "—"}${t.kind === "person" && t.partner ? ` · ${t.partner}` : ""}${t.kind === "person" && t.flow ? ` · ${SWAP_FLOW[t.flow] || ""}` : ""}`
           : `${t.date || "—"} · ${t.method === "cash" ? "kp" : "utalás"} · ${t.partner || "—"}`;
-        card.append(el("div", { class: "item", onclick: () => h.onEditTransfer(t.id) },
+        body.append(el("div", { class: "item", onclick: () => h.onEditTransfer(t.id) },
           el("div", {}, el("div", {}, t.name), el("small", {}, small)),
           el("div", { class: dir === "in" ? "pos" : dir === "out" ? "neg" : "muted" }, sign + ft(t.amount))));
       }
-      if (!list.length) card.append(el("div", { class: "item muted" }, "Nincs tétel"));
-      card.append(el("button", { class: "ghost", style: "width:100%;margin-top:8px", onclick: () => h.onAddTransfer(dir) }, `Új ${title.toLowerCase()}`));
+      if (!list.length) body.append(el("div", { class: "item muted" }, "Nincs tétel"));
+      body.append(el("button", { class: "ghost", style: "width:100%;margin-top:8px", onclick: () => h.onAddTransfer(dir) }, `Új ${title.toLowerCase()}`));
+      card.append(body);
     }
     wrap.append(card);
   }
@@ -807,7 +818,8 @@ function ovCard(state, h, key, title) {
   const open = !isCollapsed(state, "ov:" + key);
   card.append(el("button", { class: "collapse-head", onclick: () => h.onToggleCollapse("ov:" + key) },
     el("span", { class: "left" }, chev(open), el("span", { class: "sec-title", style: "font-size:1.0625rem" }, title))));
-  const body = el("div", { style: open ? "" : "display:none" });
+  const body = el("div", { style: open ? "" : "display:none",
+    class: open && state.justToggled === "ov:" + key ? "reveal" : "" });
   card.append(body);
   return [card, body];
 }
