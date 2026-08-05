@@ -10,6 +10,28 @@ const MONTH_SHORT = ["jan.", "feb.", "márc.", "ápr.", "máj.", "jún.", "júl.
 export function isCollapsed(state, key) { return !!(state.db.settings.collapsed && state.db.settings.collapsed[key]); }
 function chev(open) { return el("span", { class: "chev" }, open ? "▾" : "▸"); }
 
+const CAL_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>';
+
+// Keresősáv naptár-ikonnal (dátumra szűrés) és törlő X-szel.
+// onInput(érték, { noFocus }) — dátumválasztás után nem kérjük vissza a billentyűzetet.
+function searchRow(id, value, placeholder, onInput) {
+  const input = el("input", { id, class: "search-input", value: value || "", placeholder,
+    oninput: e => onInput(e.target.value) });
+  const actions = el("div", { class: "sr-actions" });
+  if (value) {
+    actions.append(el("button", { class: "sr-btn sr-clear", type: "button", "aria-label": "Keresés törlése",
+      onclick: () => onInput("", { noFocus: true }) }, "×"));
+  }
+  // A dátum-beviteli mező átlátszóan az ikon fölött ül: koppintásra a telefon saját naptára nyílik.
+  const dateInput = el("input", { type: "date", class: "sr-date", "aria-label": "Keresés dátum szerint",
+    value: /^\d{4}-\d{2}-\d{2}$/.test(value || "") ? value : "",
+    onchange: e => { if (e.target.value) onInput(e.target.value, { noFocus: true }); } });
+  const calBtn = el("span", { class: "sr-btn sr-cal", title: "Keresés dátum szerint" }, dateInput);
+  calBtn.insertAdjacentHTML("afterbegin", CAL_SVG);
+  actions.append(calBtn);
+  return el("div", { class: "search-row" }, input, actions);
+}
+
 // Kereséshez: a dátum több írásmódja, hogy „08-04", „aug", „augusztus" és „4." is találjon.
 function dateSearchText(dateKey) {
   if (!dateKey) return "";
@@ -164,7 +186,9 @@ export function renderMonthView(state, h) {
   const pinned = renderRemindersPinned(state, h); if (pinned) wrap.append(pinned);
 
   const q = (state.search || "").trim().toLowerCase();
-  wrap.append(el("input", { id: "kiadas-search", value: state.search || "", placeholder: "Keresés (név, üzlet vagy dátum)", oninput: e => h.onSearchInput(e.target.value), style: "margin:10px 0 8px" }));
+  const sr = searchRow("kiadas-search", state.search || "", "Keresés (név, üzlet vagy dátum)", h.onSearchInput);
+  sr.style.margin = "10px 0 8px";
+  wrap.append(sr);
   wrap.append(el("button", { class: "primary", onclick: h.onAddItem, style: "width:100%;margin:0 0 10px" }, "Új tétel"));
   wrap.append(renderMonthTotal(state, h));
 
@@ -465,7 +489,9 @@ export function renderTransfersView(state, h) {
   wrap.append(renderPageHead(state, h, "Pénzmozgás"));
 
   const q = (state.transferSearch || "").trim().toLowerCase();
-  wrap.append(el("input", { id: "pm-search", value: state.transferSearch || "", placeholder: "Keresés (megnevezés, partner vagy dátum)", oninput: e => h.onTransferSearch(e.target.value), style: "margin-bottom:12px" }));
+  const psr = searchRow("pm-search", state.transferSearch || "", "Keresés (megnevezés, partner vagy dátum)", h.onTransferSearch);
+  psr.style.marginBottom = "12px";
+  wrap.append(psr);
 
   for (const [dir, title] of [["in", "Bejövő"], ["out", "Kimenő"], ["swap", "Átvezetés"]]) {
     const all = m.transfers.filter(t => t.dir === dir);

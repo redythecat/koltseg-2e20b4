@@ -89,6 +89,23 @@ label { display: block; color: var(--muted); font-size: 0.8125rem; margin: 0.5re
 .bar > span { display: block; height: 100%; background: var(--accent); }
 .muted { color: var(--muted); }
 .pos { color: var(--pos); font-weight: 600; } .neg { color: var(--neg); font-weight: 600; }
+/* Keresősáv: naptár-ikon (dátumra szűrés) és törlő X a jobb oldalán */
+.search-row { position: relative; }
+.search-row .search-input { padding-right: 4.75rem; }
+.search-row .sr-actions { position: absolute; right: 0.3125rem; top: 50%; transform: translateY(-50%);
+  display: flex; align-items: center; gap: 0.125rem; }
+.search-row .sr-btn { position: relative; flex: none; width: 2.125rem; height: 2.125rem; min-height: 0;
+  padding: 0; display: flex; align-items: center; justify-content: center;
+  background: transparent; border: none; border-radius: 50%; color: var(--muted); cursor: pointer; }
+.search-row .sr-btn:active { background: var(--card); color: var(--fg); }
+.search-row .sr-cal svg { width: 1.3125rem; height: 1.3125rem; display: block; }
+.search-row .sr-clear { font-size: 1.5rem; line-height: 1; }
+/* A dátum-mező átlátszóan az ikon fölött: koppintásra a telefon saját naptára nyílik. */
+.search-row .sr-date { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0;
+  padding: 0; margin: 0; border: none; background: transparent; opacity: 0; cursor: pointer;
+  appearance: none; -webkit-appearance: none; }
+.search-row .sr-date::-webkit-calendar-picker-indicator { width: 100%; height: 100%; margin: 0; padding: 0; opacity: 0; cursor: pointer; }
+
 .quick { display: flex; flex-wrap: wrap; gap: 0.375rem; margin-bottom: 0.25rem; }
 .quick button { min-height: 2.5rem; padding: 0.5rem 0.625rem; }
 

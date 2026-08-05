@@ -1,6 +1,11 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.27", date: "2026-08-05", notes: [
+      "A keresősáv jobb oldalán naptár-ikon: koppintásra a telefon saját dátumválasztója nyílik, és a választott nap magától bekerül a keresőbe. Mellette egy × törli a keresést.",
+    ],
+  },
+  {
     v: "2.26", date: "2026-08-05", notes: [
       "Sok kategóriánál is elérhető mindegyik: a választó ablakok (pl. blokk-bevitelnél a kategória átjavítása) mostantól görgethetők.",
       "Kereshetsz dátumra is a Kiadásoknál és a Pénzmozgásnál — működik a „08-04”, a „2026-08-04”, az „aug.” és az „augusztus” is.",

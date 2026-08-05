@@ -200,9 +200,10 @@ const handlers = {
   onEditItem: (id) => { state.editing = { type: "item", id }; render(); },
   onAddTransfer: (dir) => { state.editing = { type: "transfer", id: null, dir }; render(); },
   onEditTransfer: (id) => { state.editing = { type: "transfer", id }; render(); },
-  onTransferSearch: (v) => {
+  onTransferSearch: (v, { noFocus } = {}) => {
     state.transferSearch = v;
     render();
+    if (noFocus) return;   // dátumválasztás/törlés után ne ugorjon fel a billentyűzet
     const si = document.getElementById("pm-search");
     if (si) { si.focus(); const n = si.value.length; try { si.setSelectionRange(n, n); } catch { /* noop */ } }
   },
@@ -220,9 +221,10 @@ const handlers = {
   onDeleteTemplate: (t) => removeTemplate(t),
   onEditTransferTemplate: (id) => openTransferTemplateModal(id),
   onDeleteTransferTemplate: (t) => removeTransferTemplate(t),
-  onSearchInput: (v) => {
+  onSearchInput: (v, { noFocus } = {}) => {
     state.search = v;
     render();
+    if (noFocus) return;   // dátumválasztás/törlés után ne ugorjon fel a billentyűzet
     const si = document.getElementById("kiadas-search");
     if (si) { si.focus(); const n = si.value.length; try { si.setSelectionRange(n, n); } catch { /* nem szöveges */ } }
   },
