@@ -2,7 +2,7 @@
 export const CHANGELOG = [
   {
     v: "2.34", date: "2026-08-06", notes: [
-      "A statisztikában a „(pénzmozgás)” jelölés „(pénzm.)”-re rövidült, hogy a nagy összegeknek is bőven legyen helye.",
+      "A statisztikában a hosszú címkék (Kötelező/Egyéb kiadás) két sorba rendeződtek — a „(pénzmozgás)” a második sorban —, így a nagy összegeknek is bőven jut hely.",
     ],
   },
   {
