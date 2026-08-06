@@ -284,8 +284,21 @@ const handlers = {
   onEditImportRow: async (i) => {
     const r = state.importPreview && state.importPreview.rows[i];
     if (!r) return;
-    const res = await formModal("Tétel javítása", [{ key: "name", label: "Név", value: r.name }, { key: "store", label: "Üzlet", value: r.store || "" }]);
-    if (res) { if (res.name.trim()) r.name = res.name.trim(); r.store = res.store.trim(); render(); }
+    const res = await formModal("Tétel javítása", [
+      { key: "name", label: "Név", value: r.name },
+      { key: "store", label: "Üzlet", value: r.store || "" },
+      { key: "qty", label: "Darab", value: r.qty ?? 1, type: "number", min: 1 },
+      { key: "price", label: "Ár — a sor teljes összege (Ft)", value: r.price, type: "number", min: 0 },
+    ]);
+    if (res) {
+      if (res.name.trim()) r.name = res.name.trim();
+      r.store = res.store.trim();
+      const qty = Math.round(Number(res.qty));
+      if (qty >= 1) r.qty = qty;
+      const price = Math.round(Number(res.price));
+      if (Number.isFinite(price) && price >= 0 && res.price !== "") r.price = price;
+      render();
+    }
   },
   onPickImportCat: async (i) => {
     const r = state.importPreview && state.importPreview.rows[i];

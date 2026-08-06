@@ -938,7 +938,7 @@ export function renderImportView(state, { onDecode, onConfirm, onBack, onCopyPro
     const dates = [...new Set(p.rows.map(r => r.date).filter(Boolean))];
     const headerLabel = dates.length === 1 ? importDateLabel(dates[0]) : monthLabel(p.month);
     box.append(el("h3", {}, `${p.rows.length} tétel — ${headerLabel}`));
-    box.append(el("p", { class: "muted", style: "margin:0 0 8px" }, "Tipp: tartsd nyomva egy tétel nevét a név/üzlet javításához."));
+    box.append(el("p", { class: "muted", style: "margin:0 0 8px" }, "Tipp: tartsd nyomva egy tétel nevét a szerkesztéshez."));
     p.rows.forEach((r, idx) => {
       const nameEl = el("div", { class: "editable-name" }, `${r.name} — ${ft(r.price)}`);
       if (onEditRow) attachLongPress(nameEl, () => onEditRow(idx));

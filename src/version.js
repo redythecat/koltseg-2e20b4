@@ -1,6 +1,11 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.32", date: "2026-08-06", notes: [
+      "Blokk-bevitelnél a tétel nevét hosszan nyomva már a darabszám és az ár is javítható, nem csak a név és az üzlet.",
+    ],
+  },
+  {
     v: "2.31", date: "2026-08-05", notes: [
       "Telefonon koppintáskor nem villan fel a rendszer kék kijelölése a gombokon és a lenyitható fejléceken, és véletlenül sem jelölődik ki a szövegük — a visszajelzést az app saját, finom animációja adja.",
     ],

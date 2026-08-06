@@ -83,7 +83,7 @@ export function confirmModal(message, { okText = "Igen", cancelText = "Mégse", 
 export function helpModal() {
   const sections = [
     ["Tétel felvétele", ["„Új tétel” gombbal kézzel, vagy a Gyorslistából egy koppintással (a korábban felvett tételeidből).", "Ha megadsz darabszámot, az ár magától szorzódik az egységárral."]],
-    ["Blokk bevitele", ["Beállítások → Blokk bevitel → „Beolvasó szöveg másolása”.", "A Claude appban illeszd be a blokk fotójával. Válaszul egy JSON-t kapsz — azt másold vissza ide a beviteli mezőbe, és nyomd meg a „Beolvasás” gombot.", "Az előnézetben átállíthatod a kategóriát, és egy tétel nevét hosszan nyomva javíthatod a nevet/üzletet."]],
+    ["Blokk bevitele", ["Beállítások → Blokk bevitel → „Beolvasó szöveg másolása”.", "A Claude appban illeszd be a blokk fotójával. Válaszul egy JSON-t kapsz — azt másold vissza ide a beviteli mezőbe, és nyomd meg a „Beolvasás” gombot.", "Az előnézetben átállíthatod a kategóriát, és egy tétel nevét hosszan nyomva szerkesztheted (név, üzlet, darab, ár)."]],
     ["Elmentett tételek", ["Amit felviszel, magától bekerül a gyorslistába — Beállítások → Elmentett tételek alatt kereshető, szerkeszthető, törölhető (külön a kiadás-tételek és a pénzmozgások).", "Az elmentett ár az egységár. Ha ezt átírod, a régen felvitt kiadásaid nem változnak."]],
     ["Kötelező kiadások", ["Vedd fel a rendszereseket (törlesztő, TB, hitel), és add meg, kártyával vagy készpénzzel fizeted.", "A „Naptárba” gomb a telefon naptárába teszi, riasztással.", "A Kiadások tetején mindig látod az esedékeseket, és kipipálhatod, ha fizetted — ilyenkor felajánlja, hogy rögzítse kimenő pénzmozgásként is."]],
     ["Havi keret", ["A kategóriánál megadhatsz havi limitet; a Kiadásoknál sáv mutatja, hol tartasz, és pirosra vált túllépéskor."]],
@@ -141,6 +141,9 @@ export function formModal(title, fields) {
       const lab = document.createElement("label");
       lab.textContent = fld.label;
       const inp = document.createElement("input");
+      if (fld.type) inp.type = fld.type;
+      if (fld.type === "number") inp.inputMode = "numeric";
+      if (fld.min != null) inp.min = fld.min;
       inp.value = fld.value == null ? "" : fld.value;
       inputs[fld.key] = inp;
       box.append(lab, inp);
