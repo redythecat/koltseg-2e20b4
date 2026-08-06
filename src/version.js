@@ -1,6 +1,11 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.33", date: "2026-08-06", notes: [
+      "A statisztika-sorok értékei mindig jobbra zártak, és a hosszú tételnevek (pl. Whiskas tasak multipack) szépen, kb. egyenlő sorokba törnek.",
+    ],
+  },
+  {
     v: "2.32", date: "2026-08-06", notes: [
       "Blokk-bevitelnél a tétel nevét hosszan nyomva már a darabszám és az ár is javítható, nem csak a név és az üzlet.",
     ],
