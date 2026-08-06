@@ -10,7 +10,7 @@ import {
 } from "./model.js";
 import { decodeImport } from "./codec.js";
 import { downloadXlsx, expenseRows, transferRows } from "./xlsx.js";
-import { reminderToIcs } from "./ics.js";
+import { reminderToIcs, reminderToGoogleUrl } from "./ics.js";
 import { toast, confirmModal, choiceModal, changelogModal, helpModal, formModal, panelModal } from "./dialog.js";
 import { CHANGELOG, APP_VERSION } from "./version.js";
 import {
@@ -292,9 +292,18 @@ const handlers = {
       }
     }
   },
-  onAddToCalendar: (r) => {
-    downloadText(`${r.name}.ics`, reminderToIcs(r), "text/calendar;charset=utf-8");
-    toast("Naptár-fájl letöltve. Nyisd meg (Letöltések), és a telefon naptára felveszi.");
+  onAddToCalendar: async (r) => {
+    const how = await choiceModal("Hogyan tegyem a naptárba?", [
+      { label: "Google Naptárral (Androidon ez az alap)", value: "google" },
+      { label: "Naptár-fájllal (iPhone és más naptárak)", value: "ics" },
+    ]);
+    if (how === "google") {
+      window.open(reminderToGoogleUrl(r), "_blank");
+      toast("A Google Naptár megnyílt — ott már csak a Mentés kell.");
+    } else if (how === "ics") {
+      downloadText(`${r.name}.ics`, reminderToIcs(r), "text/calendar;charset=utf-8");
+      toast("Naptár-fájl letöltve. Nyisd meg (Letöltések), és a telefon naptára felveszi.");
+    }
   },
   onEditImportRow: async (i) => {
     const r = state.importPreview && state.importPreview.rows[i];

@@ -1,6 +1,11 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.36", date: "2026-08-07", notes: [
+      "A „Naptárba” gomb kényelmesebb: Androidon a Google Naptár nyílik meg előre kitöltve (csak a Mentés kell), iPhone-on és más naptárakhoz marad a naptár-fájl — a gomb megkérdezi, melyiket kéred.",
+    ],
+  },
+  {
     v: "2.35", date: "2026-08-07", notes: [
       "Javítva: a „Naptárba” gomb újra működik a kötelező kiadásoknál (egy korábbi átalakításnál tört el), és letöltés után üzenet is jelzi, mi a teendő.",
       "A statisztikában a hosszú címkék (Kötelező/Egyéb kiadás) két sorba rendeződtek — a „(pénzmozgás)” a második sorban —, így a nagy összegeknek is bőven jut hely. (A 2.34-es rövidítés visszavonva.)",
