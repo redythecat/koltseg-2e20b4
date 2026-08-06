@@ -893,8 +893,8 @@ export function renderOverview(state, h) {
   if (stats.topStore) statRow(mBody, "Legtöbbet itt költöttél", `${stats.topStore.name} · ${ft(stats.topStore.sum)}`, true);
   if (stats.biggestItem) statRow(mBody, "Legnagyobb tétel", `${stats.biggestItem.name} · ${ft(stats.biggestItem.price)}`);
   statRow(mBody, "Összes kiadás", ft(o.totalExpense), !stats.topStore && !stats.biggestItem);
-  statRow(mBody, "Kötelező kiadás (pénzmozgás)", ft(o.mandatoryOut));
-  statRow(mBody, "Egyéb kiadás (pénzmozgás)", ft(o.otherOut));
+  statRow(mBody, "Kötelező kiadás (pénzm.)", ft(o.mandatoryOut));
+  statRow(mBody, "Egyéb kiadás (pénzm.)", ft(o.otherOut));
   statRow(mBody, "Bolti kiadás", ft(o.expenseItems));
   statRow(mBody, "Bolti készpénz", ft(o.cash));
   statRow(mBody, "Bolti kártya", ft(o.card));
@@ -905,8 +905,8 @@ export function renderOverview(state, h) {
   if (ys.topStore) statRow(yBody, "Legtöbbet itt költöttél", `${ys.topStore.name} · ${ft(ys.topStore.sum)}`, true);
   if (ys.biggestItem) statRow(yBody, "Legnagyobb tétel", `${ys.biggestItem.name} · ${ft(ys.biggestItem.price)}`);
   statRow(yBody, "Összes kiadás", ft(yt.total), !ys.topStore && !ys.biggestItem);
-  statRow(yBody, "Kötelező kiadás (pénzmozgás)", ft(yt.mandatory));
-  statRow(yBody, "Egyéb kiadás (pénzmozgás)", ft(yt.other));
+  statRow(yBody, "Kötelező kiadás (pénzm.)", ft(yt.mandatory));
+  statRow(yBody, "Egyéb kiadás (pénzm.)", ft(yt.other));
   statRow(yBody, "Bolti kiadás", ft(yt.shop));
   statRow(yBody, "Bolti készpénz", ft(yt.cash));
   statRow(yBody, "Bolti kártya", ft(yt.card));

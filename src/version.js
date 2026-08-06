@@ -1,6 +1,11 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.34", date: "2026-08-06", notes: [
+      "A statisztikában a „(pénzmozgás)” jelölés „(pénzm.)”-re rövidült, hogy a nagy összegeknek is bőven legyen helye.",
+    ],
+  },
+  {
     v: "2.33", date: "2026-08-06", notes: [
       "A statisztika-sorok értékei mindig jobbra zártak, és a hosszú tételnevek (pl. Whiskas tasak multipack) szépen, kb. egyenlő sorokba törnek.",
     ],
