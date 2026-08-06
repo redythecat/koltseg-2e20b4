@@ -68,6 +68,18 @@ function commit() {
   render();
 }
 
+// Szöveg letöltése fájlként (pl. .ics a naptárhoz). A blob-URL-t késleltetve
+// szabadítjuk fel, mert azonnali visszavonásnál egyes telefonokon elveszik a letöltés.
+function downloadText(name, text, type = "text/plain;charset=utf-8") {
+  const blob = new Blob([text], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name.replace(/[\\/:*?"<>|]/g, "-");
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
 // --- Tétel ---
 function saveItem(f) {
   const price = Math.round(f.price); // egész forint
@@ -280,7 +292,10 @@ const handlers = {
       }
     }
   },
-  onAddToCalendar: (r) => downloadText(`${r.name}.ics`, reminderToIcs(r), "text/calendar;charset=utf-8"),
+  onAddToCalendar: (r) => {
+    downloadText(`${r.name}.ics`, reminderToIcs(r), "text/calendar;charset=utf-8");
+    toast("Naptár-fájl letöltve. Nyisd meg (Letöltések), és a telefon naptára felveszi.");
+  },
   onEditImportRow: async (i) => {
     const r = state.importPreview && state.importPreview.rows[i];
     if (!r) return;
