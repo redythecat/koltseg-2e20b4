@@ -1,8 +1,8 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
-    v: "2.34", date: "2026-08-06", notes: [
-      "A statisztikában a hosszú címkék (Kötelező/Egyéb kiadás) két sorba rendeződtek — a „(pénzmozgás)” a második sorban —, így a nagy összegeknek is bőven jut hely.",
+    v: "2.35", date: "2026-08-06", notes: [
+      "A statisztikában a hosszú címkék (Kötelező/Egyéb kiadás) két sorba rendeződtek — a „(pénzmozgás)” a második sorban —, így a nagy összegeknek is bőven jut hely. (A 2.34-es rövidítés visszavonva.)",
     ],
   },
   {
