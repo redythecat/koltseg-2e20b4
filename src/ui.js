@@ -1076,7 +1076,7 @@ export function renderRestoreView(state, h) {
   const auto = el("div", { class: "card" });
   auto.append(el("label", {}, "Automatikus mentések (a telón)"));
   if (!snaps.length) {
-    auto.append(el("div", { class: "muted" }, "Még nincs automatikus mentés. Hetente egy készül, amikor megnyitod az appot."));
+    auto.append(el("div", { class: "muted" }, "Még nincs automatikus mentés. Hetente egy készül megnyitáskor, és minden blokk-bevitel előtt is elmentődik az addigi állapot."));
   } else {
     snaps.forEach((s, i) => {
       auto.append(el("div", { class: "item" },
@@ -1095,7 +1095,7 @@ export function renderRestoreView(state, h) {
 
   wrap.append(el("div", { class: "card", style: "border-color:var(--accent)" },
     el("strong", {}, "Fontos"),
-    el("p", { class: "muted", style: "margin:6px 0 0" }, "A telón tárolt mentések elveszhetnek, ha a telefon adata törlődik vagy elveszik a telefon. Ezért havonta egyszer a „Biztonsági mentés fájlba” gombbal ments ki egy fájlt is, és tedd felhőbe vagy más biztos helyre.")));
+    el("p", { class: "muted", style: "margin:6px 0 0" }, "A telón tárolt mentések elveszhetnek, ha a telefon adata törlődik vagy elveszik a telefon. A blokk-bevitelek után kapott mentés-fájlokat ezért érdemes időnként felhőbe vagy más biztos helyre is eltenni — és a fenti gombbal bármikor készíthetsz frisset kézzel is.")));
   return wrap;
 }
 
@@ -1160,14 +1160,14 @@ export function renderSettings(state, h) {
   // 4) Fontos figyelmeztetés — közvetlenül a biztonsági mentés fölé
   wrap.append(el("div", { class: "warn-card" },
     el("span", { class: "warn-title" }, "Fontos — mentsd az adataidat!"),
-    el("p", {}, "Az összes adatod és a telón tárolt automatikus mentések a TELEFONODON vannak. Ha törlöd a böngésző adatait, alaphelyzetbe állítod a telót, vagy az iPhone felszabadítja a helyet, MINDEN elveszhet. Ezért havonta egyszer nyomd meg lent a „Biztonsági mentés fájlba” gombot, és tedd a fájlt felhőbe vagy más biztos helyre.")));
+    el("p", {}, "Az összes adatod a TELEFONODON van. Ha törlöd a böngésző adatait vagy elveszik a teló, MINDEN elveszhet. A biztonsági mentés ezért már magától megy: minden blokk-bevitel után készül egy mentés-fájl (iPhone-on rákérdez), hetente pedig telefonos mentés is. A mentés-fájlokat időnként tedd felhőbe vagy más biztos helyre.")));
 
   // 5) Biztonsági mentés + Excel
   const safeCard = el("div", { class: "card" });
   safeCard.append(el("label", {}, "Biztonsági mentés (hogy ne vesszen el)"),
     b("Biztonsági mentés fájlba", h.onBackup, "primary"),
     b("Visszaállítás mentésből", h.onOpenRestore),
-    el("p", { class: "muted", style: "margin:4px 0 0" }, "Ezt tedd el havonta (felhőbe vagy emailbe küldve) — EBBŐL állítható vissza minden az appban."));
+    el("p", { class: "muted", style: "margin:4px 0 0" }, "Blokk-bevitel után magától is készül mentés-fájl; ezzel a gombbal bármikor kérhetsz frisset. EBBŐL állítható vissza minden az appban — tedd felhőbe vagy emailbe."));
   wrap.append(safeCard);
 
   const xlsCard = el("div", { class: "card" });

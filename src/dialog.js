@@ -90,7 +90,7 @@ export function helpModal() {
     ["Pénzmozgás", ["Bejövő: fizetés, érkező utalások. Kimenő: albérlet, törlesztő, bármi, amit fizetsz.", "A kimenőnél pipálhatod, hogy kötelező kiadás-e. Amit a „Kifizetve” gombbal rögzítesz, az magától kötelező lesz.", "Átvezetés: készpénzfelvétel, kártyára befizetés vagy csere valakivel. Ez csak napló — egyik összesítésbe sem számít bele."]],
     ["Áttekintő", ["Bevétel/kiadás/egyenleg, összehasonlítás az előző hónappal és hó végi becslés.", "Alul Havi és Éves statisztika: összes, kötelező, egyéb és bolti kiadás, készpénz/kártya bontással."]],
     ["Kilépés", ["Nyomd meg kétszer a telefon Vissza gombját — az első után lent megjelenik egy üzenet, hogy véletlenül ne lépj ki."]],
-    ["Mentés (fontos!)", ["Havonta egyszer: Beállítások → „Biztonsági mentés fájlba”, és tedd felhőbe/emailbe.", "Az app hetente magától is ment a telóra (Beállítások → Visszaállítás)."]],
+    ["Mentés (fontos!)", ["A biztonsági mentés magától megy: minden blokk-bevitel után letöltődik egy mentés-fájl (iPhone-on rákérdez), és hetente telefonos mentés is készül (Beállítások → Visszaállítás).", "A letöltött mentés-fájlokat időnként tedd felhőbe vagy emailbe — telócsere vagy adatvesztés esetén EBBŐL állítható vissza minden.", "Kézzel bármikor: Beállítások → „Biztonsági mentés fájlba”."]],
     ["Excel", ["A Beállítások → Excel táblázat csak megnézésre/nyomtatásra való, nem visszaállításra."]],
     ["Kinézet", ["Beállításokban: sötét/világos téma, kiemelő szín, betűméret."]],
   ];

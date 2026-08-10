@@ -30,8 +30,10 @@ Személyes költségkövető (telóra). Az adatok a telefonodon tárolódnak, ni
   kategória-bontás, valamint Havi és Éves statisztika (összes / kötelező / egyéb / bolti, kp és kártya).
 
 ## Mentés
-- Beállítások → „Biztonsági mentés fájlba": teljes mentés egy JSON-fájlba (telócsere ellen).
-  Visszatöltés: „Visszaállítás mentésből". Az app hetente magától is készít mentést a telóra.
+- A mentés magától megy: minden blokk-bevitel után letöltődik egy mentés-fájl (iPhone-on rákérdez),
+  és hetente telefonos mentés is készül. Kézzel: Beállítások → „Biztonsági mentés fájlba".
+  Visszatöltés: „Visszaállítás mentésből" (a telefonos mentések listája is itt van, a 7 napnál
+  régebbiek egy gombbal törölhetők).
 - Beállítások → Excel táblázat: .xlsx (ez a hónap vagy minden) — megnézésre/nyomtatásra,
   visszaállításra nem alkalmas.
 

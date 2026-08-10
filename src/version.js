@@ -3,6 +3,7 @@ export const CHANGELOG = [
   {
     v: "2.39", date: "2026-08-07", notes: [
       "A diagram-váltó ikonjai (sávok / kördiagram) kaptak egy kis levegőt — nem érnek a gomb széléig.",
+      "A mentésről szóló szövegek (súgó, Beállítások, Visszaállítás) frissültek: a biztonsági mentés már magától megy minden blokk-bevitel után és a heti mentéssel — a régi „havonta ments kézzel” felszólítások elavultak.",
     ],
   },
   {
