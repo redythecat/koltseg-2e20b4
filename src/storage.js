@@ -11,6 +11,7 @@ function normalize(db) {
   if (!db.settings.accent) db.settings.accent = "blue";
   if (!db.settings.collapsed) db.settings.collapsed = {};
   if (!db.settings.fontScale || db.settings.fontScale === "large") db.settings.fontScale = "normal";
+  if (![2, 4, 7].includes(db.settings.autoBackupDays)) db.settings.autoBackupDays = 4;
   if (db.templates && Array.isArray(db.templates.items)) for (const t of db.templates.items) if (!t.id) t.id = genId("tpl");
   if (db.templates && Array.isArray(db.templates.transfers)) for (const t of db.templates.transfers) if (!t.id) t.id = genId("ttpl");
   // Régi adat: a „Kifizetve" gombbal rögzített kimenők jegyzetéről ismerjük fel a kötelezőt.
@@ -97,16 +98,17 @@ export function pruneOldBackups(maxDays = 7) {
   return list.length - kept.length;
 }
 
-// Automatikus mentés megnyitáskor: ha eltelt 4+ nap az utolsó óta és van mit menteni.
-// Igaz értékkel tér vissza, ha most készített egy mentést.
+// Automatikus mentés megnyitáskor: ha eltelt a beállított számú nap (2/4/7) az utolsó óta
+// és van mit menteni. Igaz értékkel tér vissza, ha most készített egy mentést.
 export function maybeAutoBackup(db) {
   const hasData = (db.reminders && db.reminders.length) ||
     Object.values(db.months || {}).some(m => (m.items && m.items.length) || (m.transfers && m.transfers.length));
   if (!hasData) return false;
+  const days = [2, 4, 7].includes(db.settings?.autoBackupDays) ? db.settings.autoBackupDays : 4;
   const today = todayKey();
   const last = localStorage.getItem(AUTO_KEY);
-  if (last && daysBetween(last, today) < 4) return false;
-  addSnapshot(db, "automatikus (4 naponta)");
+  if (last && daysBetween(last, today) < days) return false;
+  addSnapshot(db, `automatikus (${days} naponta)`);
   localStorage.setItem(AUTO_KEY, today);
   return true;
 }

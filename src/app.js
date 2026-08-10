@@ -299,6 +299,7 @@ const handlers = {
     render();
   },
   onSetCatChart: (mode) => { state.db.settings.catChartMode = mode; commit(); },
+  onSetAutoBackupDays: (days) => { state.db.settings.autoBackupDays = Number(days); commit(); },
   onOpenReminders: () => { state.view = "reminders"; render(); },
   onAddReminder: () => { state.editing = { type: "reminder", id: null }; render(); },
   onEditReminder: (id) => { state.editing = { type: "reminder", id }; render(); },
@@ -545,7 +546,7 @@ function render() {
 
 // Ha most készült heti auto-mentés, ajánljuk fel fájlba/felhőbe mentésre (egy koppintás).
 if (didAutoBackup) {
-  confirmModal("Elkészült az automatikus mentés (ez csak a telefonon tárolódik, 4 naponta készül). Készítsek biztonsági mentést fájlba is? (ajánlott)", { okText: "Igen, fájlba", cancelText: "Most nem" })
+  confirmModal(`Elkészült az automatikus mentés (ez csak a telefonon tárolódik, ${state.db.settings.autoBackupDays} naponta készül). Készítsek biztonsági mentést fájlba is? (ajánlott)`, { okText: "Igen, fájlba", cancelText: "Most nem" })
     .then(yes => { if (yes) shareOrDownloadBackup(state.db); });
 }
 

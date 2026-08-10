@@ -1077,7 +1077,7 @@ export function renderRestoreView(state, h) {
   const auto = el("div", { class: "card" });
   auto.append(el("label", {}, "Automatikus mentések (a telón)"));
   if (!snaps.length) {
-    auto.append(el("div", { class: "muted" }, "Még nincs automatikus mentés. 4 naponta készül egy megnyitáskor, és minden blokk-bevitel előtt is elmentődik az addigi állapot."));
+    auto.append(el("div", { class: "muted" }, `Még nincs automatikus mentés. ${state.db.settings.autoBackupDays} naponta készül egy megnyitáskor, és minden blokk-bevitel előtt is elmentődik az addigi állapot.`));
   } else {
     snaps.forEach((s, i) => {
       auto.append(el("div", { class: "item" },
@@ -1161,13 +1161,16 @@ export function renderSettings(state, h) {
   // 4) Fontos figyelmeztetés — közvetlenül a biztonsági mentés fölé
   wrap.append(el("div", { class: "warn-card" },
     el("span", { class: "warn-title" }, "Fontos — mentsd az adataidat!"),
-    el("p", {}, "Az összes adatod a TELEFONODON van. Ha törlöd a böngésző adatait vagy elveszik a teló, MINDEN elveszhet. A biztonsági mentés ezért már magától megy: minden blokk-bevitel után készül egy mentés-fájl (iPhone-on rákérdez), 4 naponta pedig telefonos mentés is. A mentés-fájlokat időnként tedd felhőbe vagy más biztos helyre.")));
+    el("p", {}, "Az összes adatod a TELEFONODON van. Ha törlöd a böngésző adatait vagy elveszik a teló, MINDEN elveszhet. A biztonsági mentés ezért már magától megy: minden blokk-bevitel után készül egy mentés-fájl (iPhone-on rákérdez), rendszeresen (alul állítható: 2/4/7 naponta) telefonos mentés is. A mentés-fájlokat időnként tedd felhőbe vagy más biztos helyre.")));
 
   // 5) Biztonsági mentés + Excel
   const safeCard = el("div", { class: "card" });
   safeCard.append(el("label", {}, "Biztonsági mentés (hogy ne vesszen el)"),
     b("Biztonsági mentés fájlba", h.onBackup, "primary"),
     b("Visszaállítás mentésből", h.onOpenRestore),
+    el("label", {}, "Automatikus telefonos mentés gyakorisága"),
+    el("select", { onchange: e => h.onSetAutoBackupDays(e.target.value) },
+      ...[2, 4, 7].map(d => el("option", { value: String(d), ...(db.settings.autoBackupDays === d ? { selected: "" } : {}) }, `${d} naponta`))),
     el("p", { class: "muted", style: "margin:4px 0 0" }, "Blokk-bevitel után magától is készül mentés-fájl; ezzel a gombbal bármikor kérhetsz frisset. EBBŐL állítható vissza minden az appban — tedd felhőbe vagy emailbe."));
   wrap.append(safeCard);
 

@@ -31,7 +31,7 @@ Személyes költségkövető (telóra). Az adatok a telefonodon tárolódnak, ni
 
 ## Mentés
 - A mentés magától megy: minden blokk-bevitel után letöltődik egy mentés-fájl (iPhone-on rákérdez),
-  és 4 naponta telefonos mentés is készül. Kézzel: Beállítások → „Biztonsági mentés fájlba".
+  és rendszeres telefonos mentés is készül (2, 4 vagy 7 naponta — beállítható). Kézzel: Beállítások → „Biztonsági mentés fájlba".
   Visszatöltés: „Visszaállítás mentésből" (a telefonos mentések listája is itt van, a 7 napnál
   régebbiek egy gombbal törölhetők).
 - Beállítások → Excel táblázat: .xlsx (ez a hónap vagy minden) — megnézésre/nyomtatásra,
