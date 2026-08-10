@@ -1,6 +1,11 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.39", date: "2026-08-07", notes: [
+      "A diagram-váltó ikonjai (sávok / kördiagram) kaptak egy kis levegőt — nem érnek a gomb széléig.",
+    ],
+  },
+  {
     v: "2.38", date: "2026-08-07", notes: [
       "iPhone-finomítások: blokk-bevitel után ott rákérdez a fájlba mentésre (megosztó-lappal, iCloud-ba is teheted), a Naptárba fájl-útja is a megosztó-lapot használja, és régebbi iPhone-okon sem vesznek el a kiemelő színek.",
       "Belső rendrakás: felesleges kód eltávolítva, teljes átvizsgálás — minden nézet és ablak hibamentesen fut.",

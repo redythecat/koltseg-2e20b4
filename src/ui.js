@@ -870,8 +870,8 @@ export function renderOverview(state, h) {
     return b;
   };
   seg.append(
-    segBtn("bars", '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 6h13M4 12h16M4 18h9"/></svg>', "Sávok"),
-    segBtn("pie", '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3v9l6.5 6.2" /></svg>', "Kördiagram"));
+    segBtn("bars", '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 8h9M6 12h12M6 16h7"/></svg>', "Sávok"),
+    segBtn("pie", '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="7.5"/><path d="M12 4.5V12l5.3 5" /></svg>', "Kördiagram"));
   catsBody.append(seg);
   const withSum = o.byCategory.filter(b => b.sum > 0);
   const catColor = (i) => `hsl(${Math.round(i * 137.508) % 360} 70% 55%)`;
