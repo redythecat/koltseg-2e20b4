@@ -97,7 +97,7 @@ export function pruneOldBackups(maxDays = 7) {
   return list.length - kept.length;
 }
 
-// Heti auto-mentés megnyitáskor: ha eltelt 7+ nap az utolsó óta és van mit menteni.
+// Automatikus mentés megnyitáskor: ha eltelt 4+ nap az utolsó óta és van mit menteni.
 // Igaz értékkel tér vissza, ha most készített egy mentést.
 export function maybeAutoBackup(db) {
   const hasData = (db.reminders && db.reminders.length) ||
@@ -105,8 +105,8 @@ export function maybeAutoBackup(db) {
   if (!hasData) return false;
   const today = todayKey();
   const last = localStorage.getItem(AUTO_KEY);
-  if (last && daysBetween(last, today) < 7) return false;
-  addSnapshot(db, "heti automatikus");
+  if (last && daysBetween(last, today) < 4) return false;
+  addSnapshot(db, "automatikus (4 naponta)");
   localStorage.setItem(AUTO_KEY, today);
   return true;
 }

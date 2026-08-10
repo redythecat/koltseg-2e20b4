@@ -824,14 +824,16 @@ export function renderTransferForm(state, { transfer, dir, onSave, onDelete, onC
 // --- Áttekintő ---
 
 // Áttekintő-kártya összecsukható fejléccel; a tartalom a visszaadott „body"-ba kerül.
-function ovCard(state, h, key, title) {
+function ovCard(state, h, key, title, extra) {
   const card = el("div", { class: "card" });
   const open = !isCollapsed(state, "ov:" + key);
   const chevEl = chev(open);
   const inner = el("div", {});
   const { body, toggle } = collapsibleBody(open, inner, chevEl, (collapsed) => h.onSetCollapsed("ov:" + key, collapsed));
-  card.append(el("button", { class: "collapse-head", onclick: toggle },
-    el("span", { class: "left" }, chevEl, el("span", { class: "sec-title", style: "font-size:1.0625rem" }, title))));
+  const headBtn = el("button", { class: "collapse-head", onclick: toggle },
+    el("span", { class: "left" }, chevEl, el("span", { class: "sec-title", style: "font-size:1.0625rem" }, title)));
+  // extra: a címsor jobb szélére kerülő vezérlő (nem a lenyitó gomb része)
+  card.append(extra ? el("div", { class: "ov-head" }, headBtn, extra) : headBtn);
   card.append(body);
   return [card, inner];
 }
@@ -859,9 +861,8 @@ export function renderOverview(state, h) {
   }
   wrap.append(cmpCard);
 
-  const [cats, catsBody] = ovCard(state, h, "cats", "Kiadások kategóriánként");
   const chartMode = state.db.settings.catChartMode === "pie" ? "pie" : "bars";
-  // Váltó: sávok vagy kördiagram — ikonnal, a kártya tetején.
+  // Váltó: sávok vagy kördiagram — a kártya címsorában, a cím mellett jobbra.
   const seg = el("div", { class: "seg" });
   const segBtn = (mode, svg, label) => {
     const b = el("button", { class: "seg-btn" + (chartMode === mode ? " sel" : ""), type: "button",
@@ -872,7 +873,7 @@ export function renderOverview(state, h) {
   seg.append(
     segBtn("bars", '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 8h9M6 12h12M6 16h7"/></svg>', "Sávok"),
     segBtn("pie", '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="7.5"/><path d="M12 4.5V12l5.3 5" /></svg>', "Kördiagram"));
-  catsBody.append(seg);
+  const [cats, catsBody] = ovCard(state, h, "cats", "Kiadások kategóriánként", seg);
   const withSum = o.byCategory.filter(b => b.sum > 0);
   const catColor = (i) => `hsl(${Math.round(i * 137.508) % 360} 70% 55%)`;
   if (chartMode === "pie") {
@@ -1076,7 +1077,7 @@ export function renderRestoreView(state, h) {
   const auto = el("div", { class: "card" });
   auto.append(el("label", {}, "Automatikus mentések (a telón)"));
   if (!snaps.length) {
-    auto.append(el("div", { class: "muted" }, "Még nincs automatikus mentés. Hetente egy készül megnyitáskor, és minden blokk-bevitel előtt is elmentődik az addigi állapot."));
+    auto.append(el("div", { class: "muted" }, "Még nincs automatikus mentés. 4 naponta készül egy megnyitáskor, és minden blokk-bevitel előtt is elmentődik az addigi állapot."));
   } else {
     snaps.forEach((s, i) => {
       auto.append(el("div", { class: "item" },
@@ -1160,7 +1161,7 @@ export function renderSettings(state, h) {
   // 4) Fontos figyelmeztetés — közvetlenül a biztonsági mentés fölé
   wrap.append(el("div", { class: "warn-card" },
     el("span", { class: "warn-title" }, "Fontos — mentsd az adataidat!"),
-    el("p", {}, "Az összes adatod a TELEFONODON van. Ha törlöd a böngésző adatait vagy elveszik a teló, MINDEN elveszhet. A biztonsági mentés ezért már magától megy: minden blokk-bevitel után készül egy mentés-fájl (iPhone-on rákérdez), hetente pedig telefonos mentés is. A mentés-fájlokat időnként tedd felhőbe vagy más biztos helyre.")));
+    el("p", {}, "Az összes adatod a TELEFONODON van. Ha törlöd a böngésző adatait vagy elveszik a teló, MINDEN elveszhet. A biztonsági mentés ezért már magától megy: minden blokk-bevitel után készül egy mentés-fájl (iPhone-on rákérdez), 4 naponta pedig telefonos mentés is. A mentés-fájlokat időnként tedd felhőbe vagy más biztos helyre.")));
 
   // 5) Biztonsági mentés + Excel
   const safeCard = el("div", { class: "card" });

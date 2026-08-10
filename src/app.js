@@ -545,7 +545,7 @@ function render() {
 
 // Ha most készült heti auto-mentés, ajánljuk fel fájlba/felhőbe mentésre (egy koppintás).
 if (didAutoBackup) {
-  confirmModal("Elkészült a heti automatikus mentés (ez csak a telefonon tárolódik). Készítsek biztonsági mentést fájlba is? (ajánlott)", { okText: "Igen, fájlba", cancelText: "Most nem" })
+  confirmModal("Elkészült az automatikus mentés (ez csak a telefonon tárolódik, 4 naponta készül). Készítsek biztonsági mentést fájlba is? (ajánlott)", { okText: "Igen, fájlba", cancelText: "Most nem" })
     .then(yes => { if (yes) shareOrDownloadBackup(state.db); });
 }
 
