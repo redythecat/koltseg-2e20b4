@@ -298,3 +298,15 @@ test("yearStats finds top store and biggest item across the whole year", async (
   assert.equal(ys.biggestItem.name, "Téli gumi");
   assert.equal(ys.topStore.name, "Gumis");
 });
+
+test("filterFreshBackups keeps only snapshots within maxDays", async () => {
+  const { filterFreshBackups } = await import("../src/storage.js");
+  const list = [
+    { date: "2026-08-07 10:00", reason: "blokk-bevitel előtt", data: {} },
+    { date: "2026-08-01 09:00", reason: "heti automatikus", data: {} },
+    { date: "2026-07-20 09:00", reason: "", data: {} },
+    { date: "rossz-dátum", data: {} },
+  ];
+  const kept = filterFreshBackups(list, "2026-08-07", 7);
+  assert.deepEqual(kept.map(s => s.date), ["2026-08-07 10:00", "2026-08-01 09:00"]);
+});

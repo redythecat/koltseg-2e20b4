@@ -166,6 +166,19 @@ label { display: block; color: var(--muted); font-size: 0.8125rem; margin: 0.5re
 /* Szűrt havi összeg: hangsúlyosabb keret, hogy látszódjon, nem a teljes hónapot mutatja */
 .month-total.filtered { border-color: var(--accent); }
 
+/* Kategória-diagram váltó (sávok / kör) + kördiagram és jelmagyarázat */
+.seg { display: flex; gap: 0.25rem; justify-content: flex-end; margin: -0.25rem 0 0.25rem; }
+.seg-btn { flex: none; width: 2.5rem; height: 2.25rem; min-height: 0; padding: 0.25rem;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 0.625rem; color: var(--muted); }
+.seg-btn svg { width: 1.25rem; height: 1.25rem; display: block; }
+.seg-btn.sel { background: color-mix(in srgb, var(--accent) 16%, var(--bg));
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); color: var(--accent); }
+.pie { width: 10.5rem; height: 10.5rem; border-radius: 50%; margin: 0.375rem auto 0.5rem;
+  border: 1px solid var(--line); }
+.legend { display: inline-flex; align-items: center; gap: 0.5rem; min-width: 0; }
+.legend .dot { flex: none; width: 0.75rem; height: 0.75rem; border-radius: 50%; }
+
 .quick { display: flex; flex-wrap: wrap; gap: 0.375rem; margin-bottom: 0.25rem; }
 .quick button { min-height: 2.5rem; padding: 0.5rem 0.625rem; }
 

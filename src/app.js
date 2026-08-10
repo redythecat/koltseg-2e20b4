@@ -1,4 +1,4 @@
-import { load, save, downloadBackup, readBackupFile, maybeAutoBackup, listBackups, shareOrDownloadBackup } from "./storage.js";
+import { load, save, downloadBackup, readBackupFile, maybeAutoBackup, listBackups, shareOrDownloadBackup, addSnapshot, pruneOldBackups } from "./storage.js";
 import { applyTheme, watchSystemTheme, applyAccent, applyFontScale } from "./theme.js";
 import {
   addItem, updateItem, moveItem, deleteItem,
@@ -29,13 +29,14 @@ function currentMonthKey() {
 function buildImportPrompt() {
   const cats = state.db.categories.slice().sort((a, b) => a.order - b.order).map(c => c.name);
   const first = cats[0] || "Egyéb";
-  return `Ez egy blokk fotója a "Költség" nevű költségkövető appomhoz. Olvasd ki a tételeket, és add vissza CSAK egy JSON-t (semmi más szöveg), pontosan ebben a formátumban:
+  return `Ez egy blokk fotója a "Költség" nevű költségkövető appomhoz. Olvasd ki a tételeket, és add vissza egy JSON-t pontosan ebben a formátumban:
 {"month":"YYYY-MM","items":[{"name":"Tejföl","qty":2,"price":780,"store":"Lidl","date":"YYYY-MM-DD","payment":"card","category":"${first}"}]}
 Szabályok:
 - price = az adott sor teljes összege forintban, egész szám (nem egységár). qty = darabszám (ha nincs, 1).
 - payment: kártya = "card", készpénz = "cash" (a blokkon általában rajta van).
 - category CSAK ezek egyike legyen, pontosan így írva: ${cats.map(c => `"${c}"`).join(", ")}. Sorold mindegyik tételt a legmegfelelőbbe; ha egyik sem illik, válaszd a hozzá legközelebbit.
 - month és date a blokkról; ha a hónap nem derül ki, a mostani hónap.
+- NAGYON FONTOS: a válaszod KIZÁRÓLAG maga a JSON legyen — semmi bevezető vagy magyarázó szöveg, semmi kódblokk-jelölés, csak a nyers JSON egyetlen sorban.
 Csatolom a blokk fotóját.`;
 }
 
@@ -201,9 +202,11 @@ function decodeToPreview(code) {
 }
 function confirmImport() {
   const { month, rows } = state.importPreview;
+  addSnapshot(state.db, "blokk-bevitel előtt");   // telefonon tárolt, visszaállítható állapot
   for (const r of rows) addItem(state.db, month, { name: r.name, qty: r.qty, price: r.price, store: r.store, date: r.date, payment: r.payment, categoryId: r.categoryId });
   state.importPreview = null; state.view = "month"; state.month = month; commit();
-  toast(`${rows.length} tétel hozzáadva.`);
+  downloadBackup(state.db);                        // automatikus biztonsági mentés fájlba
+  toast(`${rows.length} tétel hozzáadva. Biztonsági mentés letöltve (Letöltések).`);
 }
 
 const handlers = {
@@ -277,6 +280,14 @@ const handlers = {
     state.filterTotalMode = "filtered";
     render();
   },
+  onPruneBackups: async () => {
+    const yes = await confirmModal("Törlöm a telefonon tárolt, 7 napnál régebbi automatikus mentéseket? A fájlba mentett biztonsági mentéseket ez nem érinti.", { okText: "Törlés", cancelText: "Mégse", danger: true });
+    if (!yes) return;
+    const n = pruneOldBackups(7);
+    toast(n ? `${n} régi mentés törölve.` : "Nincs 7 napnál régebbi mentés a telefonon.");
+    render();
+  },
+  onSetCatChart: (mode) => { state.db.settings.catChartMode = mode; commit(); },
   onOpenReminders: () => { state.view = "reminders"; render(); },
   onAddReminder: () => { state.editing = { type: "reminder", id: null }; render(); },
   onEditReminder: (id) => { state.editing = { type: "reminder", id }; render(); },
@@ -481,7 +492,7 @@ function render() {
   } else if (state.view === "import") {
     root.append(renderImportView(state, { initialCode: state.importCode, onDecode: decodeToPreview, onConfirm: confirmImport, onCopyPrompt: handlers.onCopyImportPrompt, onEditRow: handlers.onEditImportRow, onPickCat: handlers.onPickImportCat, onBack: () => { state.view = "settings"; render(); } }));
   } else if (state.view === "restore") {
-    root.append(renderRestoreView(state, { onRestoreSnapshot: handlers.onRestoreSnapshot, onRestoreFile: handlers.onRestoreFile, onBack: handlers.onBackFromRestore }));
+    root.append(renderRestoreView(state, { onRestoreSnapshot: handlers.onRestoreSnapshot, onRestoreFile: handlers.onRestoreFile, onPruneBackups: handlers.onPruneBackups, onBack: handlers.onBackFromRestore }));
   } else if (state.view === "settings") {
     root.append(renderSettings(state, handlers));
   } else {
@@ -515,7 +526,7 @@ function render() {
 
 // Ha most készült heti auto-mentés, ajánljuk fel fájlba/felhőbe mentésre (egy koppintás).
 if (didAutoBackup) {
-  confirmModal("Elkészült a heti biztonsági mentés a telón. Mentsd el fájlba / felhőbe is? (ajánlott)", { okText: "Igen, mentés", cancelText: "Most nem" })
+  confirmModal("Elkészült a heti automatikus mentés (ez csak a telefonon tárolódik). Készítsek biztonsági mentést fájlba is? (ajánlott)", { okText: "Igen, fájlba", cancelText: "Most nem" })
     .then(yes => { if (yes) shareOrDownloadBackup(state.db); });
 }
 

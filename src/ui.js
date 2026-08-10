@@ -448,8 +448,10 @@ function quickListBox(entries) {
     el("span", { class: "left" }, chevSpan, el("span", { class: "sec-title", style: "font-size:1rem" }, `Gyorslista (${entries.length})`)));
   const search = el("input", { placeholder: "Keresés a mentettek közt", style: "margin-bottom:8px" });
   const quick = el("div", { class: "quick" });
+  let closeList = () => {};   // kiválasztás után a lista magától becsukódik
   for (const e of entries) {
-    quick.append(el("button", { class: "ghost", type: "button", "data-name": e.name.toLowerCase(), onclick: e.onPick }, `+ ${e.name}`));
+    quick.append(el("button", { class: "ghost", type: "button", "data-name": e.name.toLowerCase(),
+      onclick: () => { e.onPick(); closeList(); } }, `+ ${e.name}`));
   }
   search.oninput = () => {
     const q = search.value.trim().toLowerCase();
@@ -457,6 +459,7 @@ function quickListBox(entries) {
   };
   const { body, toggle } = collapsibleBody(false, el("div", {}, search, quick), chevSpan, null);
   header.onclick = toggle;
+  closeList = () => { if (body.classList.contains("open")) toggle(); };
   return [header, body];
 }
 
@@ -857,9 +860,43 @@ export function renderOverview(state, h) {
   wrap.append(cmpCard);
 
   const [cats, catsBody] = ovCard(state, h, "cats", "Kiadások kategóriánként");
-  for (const b of o.byCategory) {
-    catsBody.append(el("div", { class: "cat-head", style: "margin-top:8px" }, el("span", {}, b.name), el("span", { class: "muted" }, `${ft(b.sum)} · ${Math.round(b.share * 100)}%`)));
-    catsBody.append(el("div", { class: "bar" }, el("span", { style: `width:${Math.round(b.share * 100)}%` })));
+  const chartMode = state.db.settings.catChartMode === "pie" ? "pie" : "bars";
+  // Váltó: sávok vagy kördiagram — ikonnal, a kártya tetején.
+  const seg = el("div", { class: "seg" });
+  const segBtn = (mode, svg, label) => {
+    const b = el("button", { class: "seg-btn" + (chartMode === mode ? " sel" : ""), type: "button",
+      "aria-label": label, title: label, onclick: () => h.onSetCatChart(mode) });
+    b.insertAdjacentHTML("afterbegin", svg);
+    return b;
+  };
+  seg.append(
+    segBtn("bars", '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 6h13M4 12h16M4 18h9"/></svg>', "Sávok"),
+    segBtn("pie", '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3v9l6.5 6.2" /></svg>', "Kördiagram"));
+  catsBody.append(seg);
+  const withSum = o.byCategory.filter(b => b.sum > 0);
+  const catColor = (i) => `hsl(${Math.round(i * 137.508) % 360} 70% 55%)`;
+  if (chartMode === "pie") {
+    if (!withSum.length) {
+      catsBody.append(el("div", { class: "muted", style: "margin-top:6px" }, "Ehhez a hónaphoz még nincs kiadás."));
+    } else {
+      // Kördiagram conic-gradient-tel; a színek a jelmagyarázat pöttyeivel azonosak.
+      let acc = 0;
+      const stops = withSum.map((b, i) => {
+        const from = acc; acc += b.share * 100;
+        return `${catColor(i)} ${from}% ${acc}%`;
+      });
+      catsBody.append(el("div", { class: "pie", style: `background: conic-gradient(${stops.join(", ")})` }));
+      withSum.forEach((b, i) => {
+        catsBody.append(el("div", { class: "cat-head", style: "margin-top:8px" },
+          el("span", { class: "legend" }, el("span", { class: "dot", style: `background:${catColor(i)}` }), b.name),
+          el("span", { class: "muted" }, `${ft(b.sum)} · ${Math.round(b.share * 100)}%`)));
+      });
+    }
+  } else {
+    for (const b of o.byCategory) {
+      catsBody.append(el("div", { class: "cat-head", style: "margin-top:8px" }, el("span", {}, b.name), el("span", { class: "muted" }, `${ft(b.sum)} · ${Math.round(b.share * 100)}%`)));
+      catsBody.append(el("div", { class: "bar" }, el("span", { style: `width:${Math.round(b.share * 100)}%` })));
+    }
   }
   wrap.append(cats);
 
@@ -1043,9 +1080,11 @@ export function renderRestoreView(state, h) {
   } else {
     snaps.forEach((s, i) => {
       auto.append(el("div", { class: "item" },
-        el("div", {}, el("div", {}, s.date), el("small", {}, itemsCount(s.data))),
+        el("div", {}, el("div", {}, s.date + (s.reason ? ` · ${s.reason}` : "")), el("small", {}, itemsCount(s.data))),
         el("button", { class: "ghost", onclick: () => h.onRestoreSnapshot(i) }, "Visszaállítás")));
     });
+    auto.append(el("button", { class: "ghost", style: "width:100%;margin-top:8px;color:var(--neg)", onclick: h.onPruneBackups },
+      "7 napnál régebbi mentések törlése"));
   }
   wrap.append(auto);
 

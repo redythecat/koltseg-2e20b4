@@ -26,7 +26,17 @@ export function decodeImport(code) {
       // 2) sima JSON is mehet (bemásolva)
       obj = JSON.parse(raw);
     } catch {
-      throw new Error("Érvénytelen import (se kód, se JSON).");
+      // 3) AI-válaszból másolva: ```json kerítés vagy körítő szöveg a JSON körül
+      //    (ChatGPT és Gemini gyakran így adja vissza) — kivesszük belőle a { ... } részt.
+      const cleaned = raw.replace(/```[a-z]*/gi, "");
+      const start = cleaned.indexOf("{");
+      const end = cleaned.lastIndexOf("}");
+      if (start < 0 || end <= start) throw new Error("Érvénytelen import (se kód, se JSON).");
+      try {
+        obj = JSON.parse(cleaned.slice(start, end + 1));
+      } catch {
+        throw new Error("Érvénytelen import (se kód, se JSON).");
+      }
     }
   }
   if (!obj || typeof obj !== "object" || typeof obj.month !== "string" || !Array.isArray(obj.items)) {

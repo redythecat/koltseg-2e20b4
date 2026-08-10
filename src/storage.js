@@ -3,7 +3,7 @@ import { createDatabase, daysBetween, todayKey, genId } from "./model.js";
 export const KEY = "koltseg-db-v1";
 export const BACKUPS_KEY = "koltseg-backups-v1";
 export const AUTO_KEY = "koltseg-autobackup-last";
-const MAX_SNAPSHOTS = 3;
+const MAX_SNAPSHOTS = 10;
 
 function normalize(db) {
   if (!db.reminders) db.reminders = [];
@@ -72,12 +72,29 @@ export function listBackups() {
   }
 }
 
-export function addSnapshot(db) {
+export function addSnapshot(db, reason) {
   const now = new Date();
   const stamp = `${todayKey()} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   const list = listBackups();
-  list.unshift({ date: stamp, data: JSON.parse(JSON.stringify(db)) });
+  list.unshift({ date: stamp, reason: reason || "", data: JSON.parse(JSON.stringify(db)) });
   localStorage.setItem(BACKUPS_KEY, JSON.stringify(list.slice(0, MAX_SNAPSHOTS)));
+}
+
+// Tisztán tesztelhető: melyik mentések maradnak (a maxDays napnál nem régebbiek).
+export function filterFreshBackups(list, today, maxDays) {
+  return list.filter(sn => {
+    const d = String(sn.date || "").slice(0, 10);
+    const age = daysBetween(d, today);
+    return Number.isFinite(age) && age <= maxDays;
+  });
+}
+
+// A telefonon tárolt, maxDays napnál régebbi mentések törlése; a töröltek számát adja vissza.
+export function pruneOldBackups(maxDays = 7) {
+  const list = listBackups();
+  const kept = filterFreshBackups(list, todayKey(), maxDays);
+  if (kept.length !== list.length) localStorage.setItem(BACKUPS_KEY, JSON.stringify(kept));
+  return list.length - kept.length;
 }
 
 // Heti auto-mentés megnyitáskor: ha eltelt 7+ nap az utolsó óta és van mit menteni.
@@ -89,7 +106,7 @@ export function maybeAutoBackup(db) {
   const today = todayKey();
   const last = localStorage.getItem(AUTO_KEY);
   if (last && daysBetween(last, today) < 7) return false;
-  addSnapshot(db);
+  addSnapshot(db, "heti automatikus");
   localStorage.setItem(AUTO_KEY, today);
   return true;
 }

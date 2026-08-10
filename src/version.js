@@ -1,6 +1,16 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.37", date: "2026-08-07", notes: [
+      "Áttekintő: a Kiadások kategóriánként kártyán ikonnal válthatsz a sávok és a kördiagram közt — megjegyzi, melyiket szereted.",
+      "Blokk-bevitel után magától letölt egy biztonsági mentés fájlt, és a bevitel előtti állapot a Visszaállításnál is megvan.",
+      "Visszaállításnál minden mentésnél látszik, miért készült, és egy gombbal (megerősítés után) törölhetők a 7 napnál régebbi, telefonon tárolt mentések.",
+      "A blokk-beolvasó szöveg ChatGPT-vel és Geminivel is működik: az app a kódblokkba csomagolt vagy szöveggel körített JSON-t is elfogadja.",
+      "A gyorslistából választva a lista magától becsukódik.",
+      "A heti mentés felugró szövege egyértelműbb: a telefonos automatikus mentés és a fájlba mentés különbségét is elmagyarázza.",
+    ],
+  },
+  {
     v: "2.36", date: "2026-08-07", notes: [
       "A „Naptárba” gomb kényelmesebb: Androidon a Google Naptár nyílik meg előre kitöltve (csak a Mentés kell), iPhone-on és más naptárakhoz marad a naptár-fájl — a gomb megkérdezi, melyiket kéred.",
     ],

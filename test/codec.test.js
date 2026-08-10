@@ -35,3 +35,13 @@ test("decode throws when an item misses name or price", () => {
   const code = encodeImport({ month: "2026-08", items: [ { name: "X" } ] });
   assert.throws(() => decodeImport(code), /price/i);
 });
+
+test("decodeImport tolerates AI-style answers: code fences and surrounding prose", () => {
+  const payload = '{"month":"2026-08","items":[{"name":"Tej","qty":1,"price":500,"store":"Lidl","date":"2026-08-05","payment":"card","category":"Élelmiszer"}]}';
+  const fenced = "Íme a kért JSON:\n```json\n" + payload + "\n```\nSzólj, ha kell még valami!";
+  const got = decodeImport(fenced);
+  assert.equal(got.month, "2026-08");
+  assert.equal(got.items[0].name, "Tej");
+  const prose = "Természetesen! " + payload + " Remélem, segítettem.";
+  assert.equal(decodeImport(prose).items[0].price, 500);
+});
