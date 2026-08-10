@@ -26,8 +26,8 @@ h1, h2, h3 { margin: 0 0 0.5rem; }
 /* Oldalfejléc: cím + hónapváltó egy sorban, halvány kiemelő kerettel */
 .page-head { display: flex; align-items: center; flex-wrap: nowrap; gap: 0.5rem; margin-bottom: 0.75rem;
   padding: 0.5rem 0.625rem; border-radius: var(--radius);
-  background: color-mix(in srgb, var(--accent) 8%, var(--card));
-  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line)); }
+  background: var(--card); background: color-mix(in srgb, var(--accent) 8%, var(--card));
+  border: 1px solid var(--line); border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line)); }
 /* Mindig egy sor: szükség esetén a cím rövidül, a hónapváltó marad teljes. */
 .page-head .page-title { flex: 0 1 auto; min-width: 0; font-size: 1.0625rem; font-weight: 800;
   letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -69,7 +69,7 @@ button.ghost { background: transparent; }
 .month-total .chev-sm { color: var(--muted); font-size: 1rem; display: inline-block; transition: transform 0.25s ease; }
 .month-total .chev-sm.open { transform: rotate(90deg); }
 .month-total .mt-opt { display: flex; justify-content: space-between; align-items: center; width: 100%;
-  background: transparent; border: none; border-top: 1px solid color-mix(in srgb, var(--accent) 25%, var(--line));
+  background: transparent; border: none; border-top: 1px solid var(--line); border-top: 1px solid color-mix(in srgb, var(--accent) 25%, var(--line));
   padding: 0.7rem 1rem; color: var(--muted); font-size: 0.95rem; }
 .month-total .mt-opt.sel { color: var(--fg); font-weight: 700; }
 .month-total .mt-opt .v { font-weight: 700; }
@@ -80,7 +80,7 @@ button.ghost { background: transparent; }
 .tabbar button { flex: 1 1 auto; min-width: 0; min-height: 2.875rem; padding: 0.375rem 0.25rem;
   font-size: 0.875rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   background: transparent; border: 1px solid transparent; color: var(--muted); border-radius: 0.875rem; }
-.tabbar button.primary { background: color-mix(in srgb, var(--accent) 16%, transparent);
+.tabbar button.primary { background: rgba(76, 154, 255, 0.16); background: color-mix(in srgb, var(--accent) 16%, transparent);
   color: var(--accent); border-color: transparent; font-weight: 800; }
 /* Összecsukó: keskeny, a köröcske is arányos — ne foglaljon üres helyet. */
 .nav-toggle { flex: none !important; width: 2.25rem; padding: 0; display: flex; align-items: center; justify-content: center; }
@@ -127,8 +127,8 @@ label { display: block; color: var(--muted); font-size: 0.8125rem; margin: 0.5re
 .chips { display: flex; flex-wrap: wrap; gap: 0.375rem; margin: 0 0 0.625rem; }
 .chips .chip { display: flex; align-items: center; gap: 0.3125rem; min-height: 2rem; padding: 0.25rem 0.625rem;
   font-size: 0.8125rem; font-weight: 700; border-radius: 1rem;
-  background: color-mix(in srgb, var(--accent) 20%, var(--card));
-  border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--line)); color: var(--accent); }
+  background: var(--card); background: color-mix(in srgb, var(--accent) 20%, var(--card));
+  border: 1px solid var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--line)); color: var(--accent); }
 .chips .chip .chip-x { font-size: 1rem; line-height: 1; opacity: 0.8; }
 .chips .chip-all { background: transparent; border-style: dashed; color: var(--muted); border-color: var(--line); }
 
@@ -145,8 +145,8 @@ label { display: block; color: var(--muted); font-size: 0.8125rem; margin: 0.5re
 .fp-opt { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
   min-height: 2.75rem; padding: 0.5rem 0.75rem; font-size: 0.9375rem; text-align: left;
   background: var(--bg); border: 1px solid var(--line); border-radius: 0.625rem; }
-.fp-opt.sel { background: color-mix(in srgb, var(--accent) 16%, var(--bg));
-  border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); color: var(--accent); font-weight: 700; }
+.fp-opt.sel { background: var(--bg); background: color-mix(in srgb, var(--accent) 16%, var(--bg));
+  border-color: var(--accent); border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); color: var(--accent); font-weight: 700; }
 .fp-tick { flex: none; font-weight: 800; }
 /* Egy sáv, két fogantyú: a két range átlátszón egymáson ül, csak a fogantyújuk fogható meg */
 .dual-range { position: relative; height: 2.25rem; margin: 0.625rem 0 0.25rem; }
@@ -172,8 +172,8 @@ label { display: block; color: var(--muted); font-size: 0.8125rem; margin: 0.5re
   display: flex; align-items: center; justify-content: center;
   background: var(--bg); border: 1px solid var(--line); border-radius: 0.625rem; color: var(--muted); }
 .seg-btn svg { width: 1.25rem; height: 1.25rem; display: block; }
-.seg-btn.sel { background: color-mix(in srgb, var(--accent) 16%, var(--bg));
-  border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); color: var(--accent); }
+.seg-btn.sel { background: var(--bg); background: color-mix(in srgb, var(--accent) 16%, var(--bg));
+  border-color: var(--accent); border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); color: var(--accent); }
 .pie { width: 10.5rem; height: 10.5rem; border-radius: 50%; margin: 0.375rem auto 0.5rem;
   border: 1px solid var(--line); }
 .legend { display: inline-flex; align-items: center; gap: 0.5rem; min-width: 0; }
@@ -215,7 +215,7 @@ input, select, textarea { transition: background-color 0.25s ease, color 0.25s e
   background: transparent; border: none; padding: 0.375rem 0; min-height: 3.5rem; text-align: left; }
 .collapse-head .left { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
 .chev { color: var(--accent); font-size: 1.3125rem; flex: none; width: 2.25rem; height: 2.25rem; line-height: 2.25rem;
-  text-align: center; border-radius: 50%; background: color-mix(in srgb, var(--accent) 16%, transparent);
+  text-align: center; border-radius: 50%; background: rgba(76, 154, 255, 0.16); background: color-mix(in srgb, var(--accent) 16%, transparent);
   transition: transform 0.25s ease; }
 .chev.open { transform: rotate(90deg); }
 .sec-title { font-size: 1.1875rem; font-weight: 800; letter-spacing: -0.01em; }
@@ -252,7 +252,7 @@ input[type="checkbox"] { width: 1.5rem; height: 1.5rem; min-height: 0; flex: non
 .cat-card.dragging { opacity: 0.92; box-shadow: 0 10px 26px rgba(0,0,0,0.35); position: relative; z-index: 5; }
 
 /* Üres-állapot súgó */
-.empty-hint { background: var(--card); border: 1px dashed color-mix(in srgb, var(--accent) 45%, var(--line));
+.empty-hint { background: var(--card); border: 1px dashed var(--accent); border: 1px dashed color-mix(in srgb, var(--accent) 45%, var(--line));
   border-radius: var(--radius); padding: 1rem; margin-bottom: 0.75rem; }
 .empty-hint strong { display: block; margin-bottom: 0.25rem; }
 

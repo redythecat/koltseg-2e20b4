@@ -69,6 +69,10 @@ function commit() {
   render();
 }
 
+// iPhone/iPad: telepített appban a csendes fájl-letöltés megbízhatatlan — ott a
+// rendszer megosztó-lapját használjuk, és a mentésre előbb rákérdezünk.
+const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
 // Szöveg letöltése fájlként (pl. .ics a naptárhoz). A blob-URL-t késleltetve
 // szabadítjuk fel, mert azonnali visszavonásnál egyes telefonokon elveszik a letöltés.
 function downloadText(name, text, type = "text/plain;charset=utf-8") {
@@ -205,8 +209,15 @@ function confirmImport() {
   addSnapshot(state.db, "blokk-bevitel előtt");   // telefonon tárolt, visszaállítható állapot
   for (const r of rows) addItem(state.db, month, { name: r.name, qty: r.qty, price: r.price, store: r.store, date: r.date, payment: r.payment, categoryId: r.categoryId });
   state.importPreview = null; state.view = "month"; state.month = month; commit();
-  downloadBackup(state.db);                        // automatikus biztonsági mentés fájlba
-  toast(`${rows.length} tétel hozzáadva. Biztonsági mentés letöltve (Letöltések).`);
+  if (IS_IOS) {
+    // iPhone-on a megosztó-lap csak kérdés után ugorhat fel.
+    toast(`${rows.length} tétel hozzáadva.`);
+    confirmModal("Készítsek biztonsági mentést fájlba is? (ajánlott)", { okText: "Igen, mentés", cancelText: "Most nem" })
+      .then(yes => { if (yes) shareOrDownloadBackup(state.db); });
+  } else {
+    downloadBackup(state.db);                      // automatikus biztonsági mentés fájlba
+    toast(`${rows.length} tétel hozzáadva. Biztonsági mentés letöltve (Letöltések).`);
+  }
 }
 
 const handlers = {
@@ -312,7 +323,15 @@ const handlers = {
       window.open(reminderToGoogleUrl(r), "_blank");
       toast("A Google Naptár megnyílt — ott már csak a Mentés kell.");
     } else if (how === "ics") {
-      downloadText(`${r.name}.ics`, reminderToIcs(r), "text/calendar;charset=utf-8");
+      const ics = reminderToIcs(r);
+      if (IS_IOS && navigator.canShare) {
+        // iPhone: megosztó-lap — onnan a Naptár egyből felveszi.
+        try {
+          const file = new File([ics], `${r.name}.ics`.replace(/[\\/:*?"<>|]/g, "-"), { type: "text/calendar" });
+          if (navigator.canShare({ files: [file] })) { await navigator.share({ files: [file] }); return; }
+        } catch (e) { if (e && e.name === "AbortError") return; /* egyébként: letöltés */ }
+      }
+      downloadText(`${r.name}.ics`, ics, "text/calendar;charset=utf-8");
       toast("Naptár-fájl letöltve. Nyisd meg (Letöltések), és a telefon naptára felveszi.");
     }
   },

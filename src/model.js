@@ -217,15 +217,6 @@ export function yearStats(db, year) {
   return statsFromItems(items);
 }
 
-// Egy adott év összes bolti kiadása (minden hónap tétele).
-export function yearTotal(db, year) {
-  let sum = 0;
-  for (const key of Object.keys(db.months)) {
-    if (key.startsWith(year + "-")) sum += db.months[key].items.reduce((s, i) => s + i.price, 0);
-  }
-  return Math.round(sum);
-}
-
 // Éves bontás: bolti (tételek), kötelező (jelölt kimenő pénzmozgás), egyéb kimenő,
 // minden együtt, bolti kp/kártya és bejövő.
 export function yearTotals(db, year) {
