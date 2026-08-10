@@ -45,3 +45,17 @@ test("decodeImport tolerates AI-style answers: code fences and surrounding prose
   const prose = "Természetesen! " + payload + " Remélem, segítettem.";
   assert.equal(decodeImport(prose).items[0].price, 500);
 });
+
+test("decodeImport accepts curly (smart) quotes from ChatGPT/Gemini on iPhone", () => {
+  const smart = '{\u201Cmonth\u201D:\u201C2026-08\u201D,\u201Citems\u201D:[{\u201Cname\u201D:\u201CNat. g\u00f6r\u00f6g joghurt\u201D,\u201Cqty\u201D:1,\u201Cprice\u201D:679,\u201Cstore\u201D:\u201CLidl\u201D,\u201Cdate\u201D:\u201C2026-08-10\u201D,\u201Cpayment\u201D:\u201Ccard\u201D,\u201Ccategory\u201D:\u201C\u00c9lelmiszer\u201D}]}';
+  const got = decodeImport(smart);
+  assert.equal(got.month, "2026-08");
+  assert.equal(got.items[0].name, "Nat. görög joghurt");
+  assert.equal(got.items[0].price, 679);
+  assert.equal(got.items[0].store, "Lidl");
+});
+
+test("decodeImport accepts smart quotes even inside a code fence with prose", () => {
+  const msg = 'Itt a JSON:\n```json\n{\u201Cmonth\u201D:\u201C2026-08\u201D,\u201Citems\u201D:[{\u201Cname\u201D:\u201CVaj\u201D,\u201Cqty\u201D:1,\u201Cprice\u201D:589}]}\n```\nJó lesz?';
+  assert.equal(decodeImport(msg).items[0].price, 589);
+});

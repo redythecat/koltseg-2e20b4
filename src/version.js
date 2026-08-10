@@ -2,6 +2,7 @@
 export const CHANGELOG = [
   {
     v: "2.42", date: "2026-08-07", notes: [
+      "Javítva: iPhone-on a ChatGPT/Gemini válaszában lévő „okos” (görbe) idézőjelek miatt elszállt a blokk-beolvasás — mostantól ezeket is elfogadja.",
       "A Visszaállítás „Fontos” szövege pontosítva — nem hivatkozik többé ott nem lévő gombra.",
     ],
   },

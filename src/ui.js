@@ -965,11 +965,13 @@ export function renderImportView(state, { onDecode, onConfirm, onBack, onCopyPro
 
   const help = el("div", { class: "card" });
   help.append(el("label", {}, "1. lépés — beolvasás Claude-dal"));
-  help.append(el("p", { class: "muted", style: "margin:0 0 8px" }, "Koppints, másold ki a beolvasó szöveget, majd a Claude appban illeszd be a blokk fotójával. Válaszul egy JSON-t kapsz — azt hozd vissza ide."));
+  help.append(el("p", { class: "muted", style: "margin:0 0 8px" }, "Koppints, másold ki a beolvasó szöveget, majd a Claude (vagy ChatGPT / Gemini) appban illeszd be a blokk fotójával. Válaszul egy JSON-t kapsz — azt hozd vissza ide."));
   if (onCopyPrompt) help.append(el("button", { class: "primary", style: "width:100%", onclick: onCopyPrompt }, "Beolvasó szöveg másolása"));
   wrap.append(help);
 
-  const ta = el("textarea", { rows: "4", placeholder: "2. lépés — illeszd be ide a Claude válaszát (JSON)" }, initialCode || "");
+  // iOS ne alakítson „okos" idézőjeleket és ne javítgassa a beillesztett JSON-t.
+  const ta = el("textarea", { rows: "4", placeholder: "2. lépés — illeszd be ide az AI válaszát (JSON)",
+    autocapitalize: "off", autocorrect: "off", autocomplete: "off", spellcheck: "false" }, initialCode || "");
   wrap.append(el("div", { class: "card" }, ta, el("button", { class: "primary", style: "margin-top:8px;width:100%", onclick: () => onDecode(ta.value) }, "Beolvasás")));
 
   if (state.importPreview) {

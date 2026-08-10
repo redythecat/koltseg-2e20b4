@@ -15,30 +15,38 @@ export function encodeImport(payload) {
   return toB64(JSON.stringify(payload));
 }
 
+// Tipográfiai („okos") idézőjelek egyenesre, és a különleges szóközök simára.
+// A ChatGPT/Gemini válaszából — főleg iPhone-on — gyakran ilyenek kerülnek a vágólapra,
+// a JSON.parse viszont csak az egyenes " jelet fogadja el.
+function normalizeQuotes(text) {
+  return text
+    .replace(/[\u201C\u201D\u201E\u201F\u2033\u00AB\u00BB]/g, '"')
+    .replace(/[\u2018\u2019\u201A\u201B\u2032]/g, "'")
+    .replace(/[\u00A0\u2007\u202F\u2009]/g, " ");
+}
+
 export function decodeImport(code) {
   const raw = String(code).trim();
-  let obj;
-  try {
-    // 1) base64-elt JSON (kompakt link/kód)
-    obj = JSON.parse(fromB64(raw));
-  } catch {
-    try {
-      // 2) sima JSON is mehet (bemásolva)
-      obj = JSON.parse(raw);
-    } catch {
-      // 3) AI-válaszból másolva: ```json kerítés vagy körítő szöveg a JSON körül
-      //    (ChatGPT és Gemini gyakran így adja vissza) — kivesszük belőle a { ... } részt.
-      const cleaned = raw.replace(/```[a-z]*/gi, "");
-      const start = cleaned.indexOf("{");
-      const end = cleaned.lastIndexOf("}");
-      if (start < 0 || end <= start) throw new Error("Érvénytelen import (se kód, se JSON).");
-      try {
-        obj = JSON.parse(cleaned.slice(start, end + 1));
-      } catch {
-        throw new Error("Érvénytelen import (se kód, se JSON).");
-      }
-    }
+  const fixed = normalizeQuotes(raw);
+  // Több értelmezési próba, a legszigorúbbtól a legengedékenyebbig.
+  const candidates = [];
+  try { candidates.push(fromB64(raw)); } catch { /* nem base64 */ }   // kompakt kód/link
+  candidates.push(raw, fixed);                                        // nyers JSON (okos idézőjelekkel is)
+  for (const t of [raw, fixed]) {
+    // AI-válaszból másolva: ```json kerítés vagy körítő szöveg a JSON körül
+    const cleaned = t.replace(/```[a-z]*/gi, "");
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start >= 0 && end > start) candidates.push(cleaned.slice(start, end + 1));
   }
+  let obj = null;
+  for (const c of candidates) {
+    try {
+      const parsed = JSON.parse(c);
+      if (parsed && typeof parsed === "object") { obj = parsed; break; }
+    } catch { /* jöhet a következő próba */ }
+  }
+  if (!obj) throw new Error("Érvénytelen import (se kód, se JSON).");
   if (!obj || typeof obj !== "object" || typeof obj.month !== "string" || !Array.isArray(obj.items)) {
     throw new Error("Érvénytelen import-kód (hiányzó month vagy items).");
   }
