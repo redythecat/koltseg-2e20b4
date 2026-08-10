@@ -1,6 +1,11 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.42", date: "2026-08-07", notes: [
+      "A Visszaállítás „Fontos” szövege pontosítva — nem hivatkozik többé ott nem lévő gombra.",
+    ],
+  },
+  {
     v: "2.41", date: "2026-08-07", notes: [
       "Az automatikus telefonos mentés gyakorisága beállítható: 2, 4 vagy 7 naponta (Beállítások → Biztonsági mentés).",
     ],

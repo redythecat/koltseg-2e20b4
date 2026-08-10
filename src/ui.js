@@ -1096,7 +1096,7 @@ export function renderRestoreView(state, h) {
 
   wrap.append(el("div", { class: "card", style: "border-color:var(--accent)" },
     el("strong", {}, "Fontos"),
-    el("p", { class: "muted", style: "margin:6px 0 0" }, "A telón tárolt mentések elveszhetnek, ha a telefon adata törlődik vagy elveszik a telefon. A blokk-bevitelek után kapott mentés-fájlokat ezért érdemes időnként felhőbe vagy más biztos helyre is eltenni — és a fenti gombbal bármikor készíthetsz frisset kézzel is.")));
+    el("p", { class: "muted", style: "margin:6px 0 0" }, "A telón tárolt mentések elveszhetnek, ha a telefon adata törlődik vagy elveszik a telefon. A blokk-bevitelek, az automatikus és a manuális mentések után kapott mentés-fájlokat ezért érdemes időnként felhőbe vagy más biztos helyre is eltenni!")));
   return wrap;
 }
 
