@@ -1,6 +1,15 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.49", date: "2026-10-07", notes: [
+      "Blokk bevitel: szól, ha egy tétel már szerepel (ugyanaz a név, ár és dátum), ha a blokk végösszege már fel volt véve egy tételként (pl. a Walletből — ilyenkor törölhető), és ha egy összeg egy már felvett blokk tételeinek összege. Kézi felvitelnél is.",
+      "Blokk bevitel: a fel nem ismert kategóriájú tételek pirosan kiemelve.",
+      "Pénzmozgás: a dátuma szerinti hónapba kerül, a rossz hónapban lévőkre figyelmeztet, áthelyező gombbal.",
+      "Kötelező kiadások: heti/napi kiadásnál minden alkalom külön pipálható, és az összegek alkalmanként adódnak össze. A pipa levételekor felajánlja a rögzített pénzmozgás törlését. Korábbi hónapban pipálva a fizetés dátuma az esedékesség napja lesz.",
+      "Áttekintő: a „Várható havi összes” a még ki nem fizetett kötelező kiadásokat is tartalmazza.",
+    ],
+  },
+  {
     v: "2.48", date: "2026-10-07", notes: [
       "Ha egy hónapban más hónapra dátumozott tételek vannak (pl. több blokk egyben beolvasva), a Kiadások tetején figyelmeztetés jelenik meg, egy „Áthelyezés” gombbal. Előtte mentés készül.",
       "Tétel felvételekor és szerkesztésekor a tétel a dátuma szerinti hónapba kerül (ha más hónapra írod át a dátumot, oda költözik).",

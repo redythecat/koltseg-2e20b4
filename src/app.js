@@ -2,9 +2,11 @@ import { load, save, downloadBackup, readBackupFile, maybeAutoBackup, listBackup
 import { applyTheme, watchSystemTheme, applyAccent, applyFontScale } from "./theme.js";
 import {
   addItem, updateItem, moveItem, deleteItem, monthOfDate, relocateItem, relocateMisplacedItems,
+  relocateTransfer, relocateMisplacedTransfers, toggleOccurrencePaid, paidKey,
+  findDuplicateItem, findReceiptSumMatch, analyzeImport,
   addCategory, renameCategory, deleteCategory,
   addTransfer, updateTransfer, deleteTransfer,
-  addReminder, updateReminder, deleteReminder, toggleReminderPaid, remindersDueOn, daysBetween,
+  addReminder, updateReminder, deleteReminder, remindersDueOn, daysBetween,
   setCategoryBudget, reorderCategories, deleteItemTemplate, updateItemTemplate, todayKey,
   deleteTransferTemplate, updateTransferTemplate, emptyFilters, filterRange, hasActiveFilters,
 } from "./model.js";
@@ -15,7 +17,7 @@ import { toast, confirmModal, choiceModal, changelogModal, helpModal, formModal,
 import { CHANGELOG, APP_VERSION } from "./version.js";
 import {
   el, shiftMonth, findCategoryIdByName,
-  renderMonthView, renderItemForm, renderCategoryManager, monthLabel,
+  renderMonthView, renderItemForm, renderCategoryManager, monthLabel, ft, fmtDay,
   renderTransfersView, renderTransferForm, renderOverview,
   renderImportView, renderRemindersView, renderReminderForm, renderSettings, renderRestoreView,
   renderTemplatesManager, renderTemplateForm, renderTransferTemplateForm, renderFilterPanel,
@@ -86,9 +88,18 @@ function downloadText(name, text, type = "text/plain;charset=utf-8") {
 }
 
 // --- Tétel ---
-function saveItem(f) {
+async function saveItem(f) {
   const price = Math.round(f.price); // egész forint
   const cur = state.editing.id;
+  if (cur == null) {
+    // Duplikátum-figyelés: ugyanez a tétel, vagy egy aznapi, már felvett blokk végösszege?
+    const dup = findDuplicateItem(state.db, { name: f.name, price, date: f.date });
+    const sum = !dup && findReceiptSumMatch(state.db, f.date, price);
+    const msg = dup ? `„${dup.name}” (${ft(price)}, ${fmtDay(f.date)}) már szerepel ugyanezzel a dátummal és árral.`
+      : sum ? `Ez az összeg (${ft(price)}) egyezik egy már felvett blokk tételeinek összegével (${sum.store || "üzlet nélkül"}, ${fmtDay(f.date)}, ${sum.count} tétel).`
+      : null;
+    if (msg && !(await confirmModal(msg + "\n\nMégis mentsem?", { okText: "Igen, mentsd", cancelText: "Mégse" }))) return;
+  }
   // A tétel a dátuma szerinti hónapba kerül (más hónapra írt dátumnál oda költözik).
   let target = null;
   if (cur == null) {
@@ -110,9 +121,17 @@ async function removeItem(id) {
 // --- Utalás ---
 function saveTransfer(f) {
   const cur = state.editing.id;
-  if (cur == null) addTransfer(state.db, state.month, f);
-  else updateTransfer(state.db, state.month, cur, { name: f.name, amount: f.amount, date: f.date, partner: f.partner, note: f.note, method: f.method, kind: f.kind, flow: f.flow, mandatory: f.mandatory });
+  // A pénzmozgás is a dátuma szerinti hónapba kerül.
+  let target = null;
+  if (cur == null) {
+    target = monthOfDate(f.date);
+    addTransfer(state.db, target || state.month, f);
+  } else {
+    updateTransfer(state.db, state.month, cur, { name: f.name, amount: f.amount, date: f.date, partner: f.partner, note: f.note, method: f.method, kind: f.kind, flow: f.flow, mandatory: f.mandatory });
+    target = relocateTransfer(state.db, state.month, cur);
+  }
   state.editing = null; commit();
+  if (target && target !== state.month) toast(`A pénzmozgás a dátuma szerint ide került: ${monthLabel(target)}.`);
 }
 async function removeTransfer(id) {
   if (!(await confirmModal("Biztosan törlöd ezt a pénzmozgást?", { okText: "Törlés", cancelText: "Mégse", danger: true }))) return;
@@ -203,16 +222,49 @@ function decodeToPreview(code) {
   let payload;
   try { payload = decodeImport(extractPayload(code)); } catch (e) { toast(e.message); return; }
   const month = payload.month || state.month;
-  const rows = payload.items.map(it => ({
-    name: it.name, qty: it.qty, price: it.price, store: it.store, date: it.date || month + "-01", payment: it.payment,
-    categoryId: findCategoryIdByName(state.db, it.category) || state.db.categories[0].id,
-  }));
+  const rows = payload.items.map(it => {
+    const catId = findCategoryIdByName(state.db, it.category);
+    // catUnknown: a beolvasó által küldött kategórianevet nem ismertük fel — kiemelve mutatjuk.
+    return { name: it.name, qty: it.qty, price: it.price, store: it.store, date: it.date || month + "-01", payment: it.payment,
+      categoryId: catId || state.db.categories[0].id, catUnknown: !catId };
+  });
   state.importPreview = { month, rows };
   render();
 }
-function confirmImport() {
-  const { month, rows } = state.importPreview;
+async function confirmImport() {
+  const { month } = state.importPreview;
+  let rows = state.importPreview.rows;
+  const an = analyzeImport(state.db, rows);
+  // 1. Már szereplő tételek (pl. ugyanaz a blokk másnap újra beolvasva)
+  const dupCount = an.dup.filter(Boolean).length;
+  if (dupCount) {
+    const c = await choiceModal(`${dupCount} tétel már szerepel ugyanezzel a névvel, árral és dátummal (az előnézetben pirossal jelölve).`, [
+      { label: `Kihagyom ezeket (${dupCount} tétel)`, value: "skip" },
+      { label: "Mindet hozzáadom", value: "all" },
+    ]);
+    if (c === null) return;
+    if (c === "skip") rows = rows.filter((_, i) => !an.dup[i]);
+  }
+  // 2. A blokk végösszege már fel volt véve egy tételként (pl. a Walletből)
+  let removeTotals = [];
+  if (an.totalMatches.length) {
+    const lines = an.totalMatches.map(t => `• „${t.item.name}” — ${ft(t.sum)}, ${fmtDay(t.date)}`).join("\n");
+    const c = await choiceModal(`Ennek a blokknak a végösszege már szerepel egy tételként:\n${lines}\n\nHa az csak a végösszeg volt, most törölhető, hogy ne számolódjon kétszer.`, [
+      { label: "Törlöm a korábbi végösszeget", value: "remove" },
+      { label: "Megtartom azt is", value: "keep" },
+    ]);
+    if (c === null) return;
+    if (c === "remove") removeTotals = an.totalMatches.map(t => t.item);
+  }
+  // 3. Egyetlen összeg, ami egy már felvett blokk tételeinek összege
+  if (an.sumMatch && rows.length === 1) {
+    const s = an.sumMatch;
+    const yes = await confirmModal(`Ez az összeg (${ft(rows[0].price)}) egyezik egy már felvett blokk tételeinek összegével (${s.store || "üzlet nélkül"}, ${fmtDay(rows[0].date)}, ${s.count} tétel).\n\nMégis hozzáadjam?`, { okText: "Igen, add hozzá", cancelText: "Mégse" });
+    if (!yes) return;
+  }
+  if (!rows.length) { toast("Nem maradt hozzáadandó tétel."); return; }
   addSnapshot(state.db, "blokk-bevitel előtt");   // telefonon tárolt, visszaállítható állapot
+  for (const it of removeTotals) deleteItem(state.db, monthOfDate(it.date), it.id);
   // A tétel a saját dátuma szerinti hónapba kerül (ha a dátumot átírták másik hónapra).
   for (const r of rows) addItem(state.db, monthOfDate(r.date) || month, { name: r.name, qty: r.qty, price: r.price, store: r.store, date: r.date, payment: r.payment, categoryId: r.categoryId });
   state.importPreview = null; state.view = "month"; state.month = month; commit();
@@ -225,6 +277,16 @@ function confirmImport() {
     downloadBackup(state.db);                      // automatikus biztonsági mentés fájlba
     toast(`${rows.length} tétel hozzáadva. Biztonsági mentés letöltve (Letöltések).`);
   }
+}
+
+// Más hónapra dátumozott bejegyzések áthelyezése (megerősítés + visszaállítható mentés előtte).
+async function relocateWithConfirm(n, noun, relocateFn) {
+  const yes = await confirmModal(`Áthelyezzem a(z) ${n} ${noun}t a dátumuk szerinti hónapba? Előtte mentés készül, ami a Visszaállításnál elérhető.`, { okText: "Áthelyezés", cancelText: "Mégse" });
+  if (!yes) return;
+  addSnapshot(state.db, "áthelyezés előtt");
+  const res = relocateFn(state.db, state.month);
+  commit();
+  toast(`${res.count} ${noun} áthelyezve ide: ${res.months.map(monthLabel).join(", ")}.`);
 }
 
 const handlers = {
@@ -307,26 +369,36 @@ const handlers = {
   },
   onSetCatChart: (mode) => { state.db.settings.catChartMode = mode; commit(); },
   onSetItemSort: (mode) => { state.db.settings.itemSort = mode; commit(); },
-  onRelocateMisplaced: async (n) => {
-    const yes = await confirmModal(`Áthelyezzem a(z) ${n} tételt a dátumuk szerinti hónapba? Előtte mentés készül, ami a Visszaállításnál elérhető.`, { okText: "Áthelyezés", cancelText: "Mégse" });
-    if (!yes) return;
-    addSnapshot(state.db, "áthelyezés előtt");
-    const res = relocateMisplacedItems(state.db, state.month);
-    commit();
-    toast(`${res.count} tétel áthelyezve ide: ${res.months.map(monthLabel).join(", ")}.`);
-  },
+  onRelocateMisplaced: (n) => relocateWithConfirm(n, "tétel", relocateMisplacedItems),
+  onRelocateMisplacedTransfers: (n) => relocateWithConfirm(n, "pénzmozgás", relocateMisplacedTransfers),
   onSetAutoBackupDays: (days) => { state.db.settings.autoBackupDays = Number(days); commit(); },
   onOpenReminders: () => { state.view = "reminders"; render(); },
   onAddReminder: () => { state.editing = { type: "reminder", id: null }; render(); },
   onEditReminder: (id) => { state.editing = { type: "reminder", id }; render(); },
-  onTogglePaid: async (r) => {
-    const wasPaid = (state.db.months[state.month]?.paidReminders || []).includes(r.id);
-    toggleReminderPaid(state.db, state.month, r.id);
+  // date: az esedékesség napja ebben a hónapban (heti/napi kiadásnál alkalmanként külön pipa).
+  onTogglePaid: async (r, date) => {
+    const mk = state.month;
+    const key = paidKey(r, date);
+    const nowPaid = toggleOccurrencePaid(state.db, mk, r, date);
     commit();
-    if (!wasPaid && r.amount != null && r.amount !== "") {
-      const yes = await confirmModal(`Rögzítsem "${r.name}" (${new Intl.NumberFormat("hu-HU").format(r.amount)} Ft) kimenő pénzmozgásként is?`, { okText: "Igen, rögzítsd", cancelText: "Nem" });
+    const hasAmount = r.amount != null && r.amount !== "";
+    if (nowPaid && hasAmount) {
+      const yes = await confirmModal(`Rögzítsem "${r.name}" (${ft(r.amount)}) kimenő pénzmozgásként is?`, { okText: "Igen, rögzítsd", cancelText: "Nem" });
       if (yes) {
-        addTransfer(state.db, state.month, { dir: "out", name: r.name, amount: Number(r.amount), date: state.month + "-" + String(new Date().getDate()).padStart(2, "0"), partner: "", note: "kötelező kiadás", mandatory: true, method: r.payment === "cash" ? "cash" : "transfer" });
+        // Dátum: ma, ha ezt a hónapot nézed; különben az esedékesség napja (mindig létező nap).
+        const today = todayKey();
+        const payDate = today.slice(0, 7) === mk ? today : date;
+        addTransfer(state.db, mk, { dir: "out", name: r.name, amount: Number(r.amount), date: payDate, partner: "", note: "kötelező kiadás", mandatory: true, method: r.payment === "cash" ? "cash" : "transfer", reminderKey: key });
+        commit();
+      }
+    } else if (!nowPaid) {
+      // A pipa levételekor a kifizetéskor rögzített pénzmozgást is fel kell ajánlani törlésre,
+      // különben újrapipáláskor kétszer szerepelne. (Régi adatnál nincs kapcsolat: név alapján.)
+      const trs = state.db.months[mk]?.transfers || [];
+      const linked = trs.find(t => t.reminderKey === key)
+        || trs.find(t => !t.reminderKey && t.mandatory && t.note === "kötelező kiadás" && t.name === r.name);
+      if (linked && await confirmModal(`A kifizetéskor rögzített pénzmozgást (${linked.name}, ${ft(linked.amount)}, ${fmtDay(linked.date)}) is töröljem?`, { okText: "Igen, töröld", cancelText: "Nem", danger: true })) {
+        deleteTransfer(state.db, mk, linked.id);
         commit();
       }
     }
@@ -378,7 +450,7 @@ const handlers = {
     if (!r) return;
     const cats = state.db.categories.slice().sort((a, b) => a.order - b.order).map(c => ({ label: c.name, value: c.id }));
     const choice = await choiceModal("Válassz kategóriát", cats);
-    if (choice) { r.categoryId = choice; render(); }
+    if (choice) { r.categoryId = choice; r.catUnknown = false; render(); }
   },
   onDeleteImportRow: (i) => {
     const p = state.importPreview;

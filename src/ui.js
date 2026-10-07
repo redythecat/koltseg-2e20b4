@@ -1,5 +1,6 @@
 import { monthOverview, categoryTotal, remindersDueInMonth, occurrencesInMonth, dueSummaryForMonth, todayKey, monthComparison, monthStats, yearTotals, yearStats,
-  filterRange, dateBounds, hasActiveFilters, isCrossMonth, collectItems, misplacedItems, monthOfDate } from "./model.js";
+  filterRange, dateBounds, hasActiveFilters, isCrossMonth, collectItems, misplacedItems, misplacedTransfers, monthOfDate,
+  isOccurrencePaid, isPerOccurrence, analyzeImport } from "./model.js";
 import { ACCENTS } from "./theme.js";
 import { toast } from "./dialog.js";
 import { APP_VERSION, APP_DATE } from "./version.js";
@@ -210,7 +211,7 @@ function dateSearchText(dateKey) {
   return `${dateKey} ${MONTHS[m - 1]} ${MONTH_SHORT[m - 1]} ${d}. ${String(d).padStart(2, "0")}.`;
 }
 
-function fmtDay(dateKey) {
+export function fmtDay(dateKey) {
   const [, m, d] = dateKey.split("-").map(Number);
   return `${MONTH_SHORT[m - 1]} ${d}.`;
 }
@@ -251,12 +252,28 @@ export function renderRemindersPinned(state, h) {
   const card = el("div", { class: "card", style: "border-color:var(--accent)" });
   const chevEl = chev(open);
   const inner = el("div", {});
-  for (const d of due) {
-    const cb = el("input", { type: "checkbox", ...(d.paid ? { checked: "" } : {}), onchange: () => h.onTogglePaid(d.reminder) });
+  // Sok alkalmas (pl. napi) kiadásnál ne legyen 30 sor: a lejárt, ki nem fizetett alkalmak
+  // és a következő 2 látszik, a többit egy sor összegzi.
+  const today = todayKey();
+  const shown = [], hiddenBy = new Map();
+  for (const [id, rows] of groupBy(due, d => d.reminder.id)) {
+    if (rows.length <= 6) { shown.push(...rows); continue; }
+    const keep = new Set([...rows.filter(d => !d.paid && d.date <= today), ...rows.filter(d => d.date > today).slice(0, 2)]);
+    shown.push(...rows.filter(d => keep.has(d)));
+    const rest = rows.filter(d => !keep.has(d));
+    if (rest.length) hiddenBy.set(id, rest);
+  }
+  for (const d of shown) {
+    const cb = el("input", { type: "checkbox", ...(d.paid ? { checked: "" } : {}), onchange: () => h.onTogglePaid(d.reminder, d.date) });
     inner.append(el("div", { class: "due-row" }, cb,
       el("div", { class: "due-main" },
         el("div", {}, d.reminder.name + (d.reminder.amount != null && d.reminder.amount !== "" ? ` — ${ft(d.reminder.amount)}` : "")),
         el("div", { class: "due-when" + (d.urgent ? " urgent" : "") }, `${fmtDay(d.date)} · ${d.paid ? "kifizetve" : dueWhenText(d.daysUntil)}`))));
+  }
+  for (const rest of hiddenBy.values()) {
+    const paidN = rest.filter(d => d.paid).length;
+    inner.append(el("div", { class: "due-row muted" },
+      `${rest[0].reminder.name}: még ${rest.length} alkalom ebben a hónapban` + (paidN ? ` (ebből ${paidN} kifizetve)` : "")));
   }
   const { body, toggle } = collapsibleBody(open, inner, chevEl, (collapsed) => h.onSetCollapsed("rem", collapsed));
   card.append(el("button", { class: "collapse-head", onclick: toggle },
@@ -267,6 +284,30 @@ export function renderRemindersPinned(state, h) {
 }
 
 // --- Segédek ---
+
+// Figyelmeztetés: a hónapban más hónapra dátumozott bejegyzések vannak, áthelyező gombbal.
+function misplacedCard(list, noun, onRelocate) {
+  if (!list.length) return null;
+  const targets = [...new Set(list.map(x => monthOfDate(x.date)))].sort().map(monthLabel).join(", ");
+  return el("div", { class: "warn-card" },
+    el("span", { class: "warn-title" }, `${list.length} ${noun} dátuma másik hónapra esik`),
+    el("p", {}, `Ezek ebben a hónapban vannak, de a dátumuk szerint ide tartoznak: ${targets}.`),
+    el("button", { class: "primary", style: "width:100%;margin-top:10px", onclick: () => onRelocate(list.length) }, "Áthelyezés a dátum szerinti hónapba"));
+}
+
+// Új tétel/pénzmozgás alapdátuma: ma, ha a mostani hónapot nézed; különben a nézett hónap 1-je.
+// (A bejegyzés a dátuma szerinti hónapba kerül, így nem ugrik át a mai hónapba.)
+function defaultDate(state) {
+  const today = todayKey();
+  return today.slice(0, 7) === state.month ? today : state.month + "-01";
+}
+
+// Csoportosítás kulcs szerint, az első előfordulás sorrendjében: Map(kulcs → elemek).
+function groupBy(list, keyFn) {
+  const m = new Map();
+  for (const x of list) { const k = keyFn(x); if (!m.has(k)) m.set(k, []); m.get(k).push(x); }
+  return m;
+}
 
 export function ft(n) { return new Intl.NumberFormat("hu-HU").format(Math.round(n)) + " Ft"; }
 
@@ -318,7 +359,8 @@ function fitLabel(lbl, full) {
 }
 
 export function findCategoryIdByName(db, name) {
-  const c = db.categories.find(x => x.name.toLowerCase() === String(name || "").toLowerCase());
+  const want = String(name || "").trim().toLowerCase();
+  const c = want ? db.categories.find(x => x.name.trim().toLowerCase() === want) : null;
   return c ? c.id : null;
 }
 
@@ -379,14 +421,7 @@ export function renderMonthView(state, h) {
   const pinned = renderRemindersPinned(state, h); if (pinned) wrap.append(pinned);
 
   // Más hónapra dátumozott tételek ebben a hónapban (pl. több blokk egyben beolvasva).
-  const misplaced = misplacedItems(db, month);
-  if (misplaced.length) {
-    const targets = [...new Set(misplaced.map(it => monthOfDate(it.date)))].sort().map(monthLabel).join(", ");
-    wrap.append(el("div", { class: "warn-card" },
-      el("span", { class: "warn-title" }, `${misplaced.length} tétel dátuma másik hónapra esik`),
-      el("p", {}, `Ezek a tételek ebben a hónapban vannak, de a dátumuk szerint ide tartoznak: ${targets}.`),
-      el("button", { class: "primary", style: "width:100%;margin-top:10px", onclick: () => h.onRelocateMisplaced(misplaced.length) }, "Áthelyezés a dátum szerinti hónapba")));
-  }
+  const mp = misplacedCard(misplacedItems(db, month), "tétel", h.onRelocateMisplaced); if (mp) wrap.append(mp);
 
   const q = (state.search || "").trim().toLowerCase();
   const { maxPrice } = filterRange(db);
@@ -495,11 +530,7 @@ function quickListBox(entries) {
 
 export function renderItemForm(state, { item, onSave, onDelete, onCancel }) {
   const { db } = state;
-  // Új tételnél a dátum: ma, ha a mostani hónapot nézed; különben a nézett hónap 1-je
-  // (a tétel a dátuma szerinti hónapba kerül, így nem ugrik át a mai hónapba).
-  const today = todayKey();
-  const defDate = today.slice(0, 7) === state.month ? today : state.month + "-01";
-  const v = item || { name: "", qty: 1, price: "", store: "", date: defDate, payment: "card", categoryId: db.categories[0]?.id };
+  const v = item || { name: "", qty: 1, price: "", store: "", date: defaultDate(state), payment: "card", categoryId: db.categories[0]?.id };
   const f = { ...v };
   const wrap = el("div", { class: "card" });
   wrap.append(el("h2", {}, item ? "Tétel szerkesztése" : "Új tétel"));
@@ -731,6 +762,7 @@ export function renderTransfersView(state, h) {
   const m = db.months[month] || { items: [], transfers: [] };
   const wrap = el("div", {});
   wrap.append(renderPageHead(state, h, "Pénzmozgás"));
+  const mp = misplacedCard(misplacedTransfers(db, month), "pénzmozgás", h.onRelocateMisplacedTransfers); if (mp) wrap.append(mp);
 
   const q = (state.transferSearch || "").trim().toLowerCase();
   const psr = searchRow("pm-search", state.transferSearch || "", "Keresés (megnevezés, partner vagy dátum)", h.onTransferSearch);
@@ -780,7 +812,7 @@ export const SWAP_LABEL = { withdraw: "Készpénzfelvétel", deposit: "Befizeté
 export const SWAP_FLOW = { card2cash: "kártya → kp", cash2card: "kp → kártya" };
 
 function renderSwapForm(state, { transfer, onSave, onDelete, onCancel }) {
-  const v = transfer || { dir: "swap", kind: "withdraw", name: "", amount: "", date: todayKey(), partner: "", note: "", flow: "card2cash" };
+  const v = transfer || { dir: "swap", kind: "withdraw", name: "", amount: "", date: defaultDate(state), partner: "", note: "", flow: "card2cash" };
   const f = { ...v };
   if (!f.kind) f.kind = "withdraw";
   if (!f.flow) f.flow = "card2cash";
@@ -816,7 +848,7 @@ function renderSwapForm(state, { transfer, onSave, onDelete, onCancel }) {
 
 export function renderTransferForm(state, { transfer, dir, onSave, onDelete, onCancel }) {
   if ((transfer ? transfer.dir : dir) === "swap") return renderSwapForm(state, { transfer, onSave, onDelete, onCancel });
-  const v = transfer || { dir, name: "", amount: "", date: todayKey(), partner: "", note: "", method: "transfer" };
+  const v = transfer || { dir, name: "", amount: "", date: defaultDate(state), partner: "", note: "", method: "transfer" };
   const f = { ...v };
   if (!f.method) f.method = "transfer";
   const wrap = el("div", { class: "card" });
@@ -891,7 +923,9 @@ export function renderOverview(state, h) {
   if (cmp.projItems != null) {
     cmpBody.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Várható bolti kiadás"), el("span", { class: "muted" }, "~" + ft(cmp.projItems))));
     cmpBody.append(el("div", { class: "cat-head", style: "margin-top:6px" }, el("span", {}, "Várható havi összes"), el("span", { class: "muted" }, "~" + ft(cmp.projTotal))));
-    cmpBody.append(el("p", { class: "muted", style: "margin:4px 0 0;font-size:0.8125rem" }, "A „bolti” a napi vásárlásod előrevetítve. Az „összes” ehhez hozzáadja a kimenő pénzmozgásokat (azokat nem szorozza fel)."));
+    cmpBody.append(el("p", { class: "muted", style: "margin:4px 0 0;font-size:0.8125rem" },
+      "A „bolti” a napi vásárlásod előrevetítve. Az „összes” ehhez hozzáadja a kimenő pénzmozgásokat (azokat nem szorozza fel)" +
+      (cmp.mandatoryLeft ? `, és a még ki nem fizetett, nem rögzített kötelező kiadásokat (${ft(cmp.mandatoryLeft)}).` : ".")));
   }
   wrap.append(cmpCard);
 
@@ -1015,18 +1049,29 @@ export function renderImportView(state, { onDecode, onConfirm, onBack, onCopyPro
     const headerLabel = dates.length === 1 ? importDateLabel(dates[0]) : monthLabel(p.month);
     box.append(el("h3", {}, `${p.rows.length} tétel — ${headerLabel}`));
     box.append(el("p", { class: "muted", style: "margin:0 0 8px" }, "Tipp: tartsd nyomva egy tétel nevét a szerkesztéshez (név, üzlet, darab, ár, dátum)."));
+    // Figyelmeztetések: már szereplő tételek, korábbi végösszeg, fel nem ismert kategória.
+    const an = analyzeImport(db, p.rows);
+    const notes = [];
+    const dupN = an.dup.filter(Boolean).length;
+    if (dupN) notes.push(`${dupN} tétel már szerepel ugyanezzel a névvel, árral és dátummal (pirossal jelölve). Ha duplán olvastad be, töröld a kuka ikonnal — a hozzáadásnál is rákérdezek.`);
+    for (const t of an.totalMatches) notes.push(`A(z) ${t.store || "üzlet nélküli"} blokk (${fmtDay(t.date)}) végösszege, ${ft(t.sum)}, már szerepel egy tételként: „${t.item.name}”. Hozzáadáskor törölheted, hogy ne számolódjon kétszer.`);
+    if (an.sumMatch) notes.push(`Ez az összeg egyezik egy már felvett blokk tételeinek összegével (${an.sumMatch.store || "üzlet nélkül"}, ${an.sumMatch.count} tétel).`);
+    const unk = p.rows.filter(r => r.catUnknown).length;
+    if (unk) notes.push(`${unk} tételnél nem ismertem fel a kategóriát — ezek kiemelve, koppints rájuk és válassz.`);
+    if (notes.length) box.append(el("div", { class: "imp-notes" }, ...notes.map(n => el("p", {}, n))));
     p.rows.forEach((r, idx) => {
       const nameEl = el("div", { class: "editable-name" }, `${r.name} — ${ft(r.price)}`);
       if (onEditRow) attachLongPress(nameEl, () => onEditRow(idx));
       const dateTxt = r.date ? ` · ${r.date.slice(5).replace("-", ".")}.` : "";
       const info = el("div", { class: "imp-info" }, nameEl, el("small", {}, `${r.qty} db · ${r.store || "—"} · ${r.payment === "cash" ? "kp" : "kártya"}${dateTxt}`));
+      if (an.dup[idx]) info.append(el("small", { class: "imp-flag" }, "Már szerepel"));
       const catNm = (db.categories.find(c => c.id === r.categoryId) || {}).name || "—";
       const lbl = el("span", { class: "cat-pick-lbl" }, catNm);
-      const pick = el("button", { class: "cat-pick", onclick: () => onPickCat && onPickCat(idx) }, lbl, el("span", { class: "cat-pick-caret" }, "▾"));
+      const pick = el("button", { class: "cat-pick" + (r.catUnknown ? " unsure" : ""), title: r.catUnknown ? "Nem ismertem fel a kategóriát — válassz" : null, onclick: () => onPickCat && onPickCat(idx) }, lbl, el("span", { class: "cat-pick-caret" }, "▾"));
       requestAnimationFrame(() => fitLabel(lbl, catNm));
       const del = el("button", { class: "imp-del", "aria-label": "Tétel törlése", title: "Tétel törlése", onclick: () => onDeleteRow && onDeleteRow(idx) });
       del.insertAdjacentHTML("afterbegin", TRASH_SVG);
-      box.append(el("div", { class: "item imp-row" }, info, pick, del));
+      box.append(el("div", { class: "item imp-row" + (an.dup[idx] ? " dup" : "") }, info, pick, del));
     });
     const total = p.rows.reduce((s, r) => s + (Number(r.price) || 0), 0);
     box.append(el("div", { class: "cat-head", style: "margin-top:10px;font-weight:800;font-size:1.05rem" }, el("span", {}, "Összesen"), el("span", {}, ft(total))));
@@ -1089,7 +1134,8 @@ export function renderRemindersView(state, h) {
   if (!db.reminders.length) wrap.append(el("div", { class: "card muted" }, "Még nincs emlékeztető. Vedd fel a rendszeres kötelező kiadásaidat (törlesztő, TB, hitel…)."));
   for (const r of db.reminders) {
     const dates = occurrencesInMonth(r, month);
-    const paid = (db.months[month]?.paidReminders || []).includes(r.id);
+    const paidDates = dates.filter(d => isOccurrencePaid(db, month, r, d));
+    const paid = dates.length > 0 && paidDates.length === dates.length;
     const card = el("div", { class: "card" });
     card.append(el("div", { class: "cat-head" },
       el("span", {}, r.name + (r.active ? "" : " (kikapcsolva)")),
@@ -1097,7 +1143,12 @@ export function renderRemindersView(state, h) {
     card.append(el("div", { class: "muted", style: "margin:4px 0" },
       `${FREQ_LABEL[r.freq]}${r.interval > 1 ? ` /${r.interval}` : ""} · ${r.payment === "cash" ? "kp" : "kártya"}` + (dates.length ? ` · e havi esedékesség: ${dates.join(", ")}` : " · nincs e havi esedékesség")));
     const row = el("div", { class: "row" });
-    row.append(el("button", { class: paid ? "" : "primary", onclick: () => h.onTogglePaid(r) }, paid ? "Kifizetve ✓ (visszavon)" : "Kifizetve"));
+    if (isPerOccurrence(r) && dates.length > 1) {
+      // Heti/napi: alkalmanként a Kiadások fül tetején pipálható.
+      row.append(el("div", { class: "muted", style: "align-self:center" }, `${paidDates.length}/${dates.length} alkalom kifizetve — alkalmanként a Kiadások fülön pipálhatod`));
+    } else {
+      row.append(el("button", { class: paid ? "" : "primary", disabled: dates.length ? null : "", onclick: () => dates.length && h.onTogglePaid(r, dates[0]) }, paid ? "Kifizetve ✓ (visszavon)" : "Kifizetve"));
+    }
     row.append(el("button", { class: "ghost", onclick: () => h.onAddToCalendar(r) }, "Naptárba"));
     card.append(row);
     card.append(el("button", { class: "ghost", style: "width:100%;margin-top:8px", onclick: () => h.onEditReminder(r.id) }, "Szerkesztés"));

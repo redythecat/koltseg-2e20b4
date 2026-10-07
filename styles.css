@@ -255,6 +255,14 @@ input[type="checkbox"] { width: 1.5rem; height: 1.5rem; min-height: 0; flex: non
 .imp-del { flex: none; width: 2.75rem; min-height: 3rem; padding: 0; display: flex; align-items: center; justify-content: center;
   background: transparent; border: 1px solid var(--line); color: var(--neg); }
 .imp-del svg { width: 1.3rem; height: 1.3rem; display: block; }
+/* Import: figyelmeztetések, már szereplő sor, fel nem ismert kategória */
+.imp-notes { background: color-mix(in srgb, var(--neg) 10%, var(--card)); border: 1px solid var(--neg);
+  border-left: 6px solid var(--neg); border-radius: 0.625rem; padding: 0.5rem 0.75rem; margin: 0 0 0.5rem; }
+.imp-notes p { margin: 0.3rem 0; line-height: 1.4; font-size: 0.9375rem; }
+.imp-row.dup { background: color-mix(in srgb, var(--neg) 9%, transparent); border-radius: 0.5rem; }
+.imp-row .imp-flag { display: block; color: var(--neg); font-weight: 700; }
+.cat-pick.unsure { border: 2px solid var(--neg); background: color-mix(in srgb, var(--neg) 14%, var(--bg)); }
+.cat-pick.unsure .cat-pick-caret { color: var(--neg); }
 
 /* Kategória-sorrend fogantyú */
 .drag-handle { touch-action: none; cursor: grab; user-select: none; text-align: center;

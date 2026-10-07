@@ -20,7 +20,8 @@ Személyes költségkövető (telóra). Az adatok a telefonodon tárolódnak, ni
 - Ismétlődés (egyszeri/napi/heti/havi) + lejárat állítható, az értesítés külön kapcsolható.
 - „Naptárba": a telefonod saját naptárába teszi, ismétlődéssel és riasztással (zárt appnál is szól).
 - „Kifizetve": kipipálod, ha rendezted — felajánlja, hogy kimenő pénzmozgásként is rögzítse
-  (az így rögzített tételek magától kötelezőnek számítanak a statisztikában).
+  (az így rögzített tételek magától kötelezőnek számítanak a statisztikában). A pipa levételekor
+  a rögzített pénzmozgás törlését is felajánlja. Heti/napi kiadásnál alkalmanként pipálható.
 
 ## Pénzmozgás és áttekintő
 - Pénzmozgás fül: bejövő (fizetés, érkező utalás) és kimenő tételek; a kimenőnél jelölhető,

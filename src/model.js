@@ -85,30 +85,89 @@ export function monthOfDate(date) {
   return /^\d{4}-\d{2}-\d{2}$/.test(date || "") ? date.slice(0, 7) : null;
 }
 
-// A hónap azon tételei, amelyek dátuma MÁSIK hónapra esik (pl. több blokk egyben beolvasva).
-export function misplacedItems(db, monthKey) {
+// A hónap azon bejegyzései (list: "items" vagy "transfers"), amelyek dátuma MÁSIK hónapra esik
+// (pl. több blokk egyben beolvasva, vagy korábbi hónapban felvett, más dátumú tétel).
+function misplacedIn(db, monthKey, list) {
   const m = db.months[monthKey];
   if (!m) return [];
-  return m.items.filter(it => { const mk = monthOfDate(it.date); return mk && mk !== monthKey; });
+  return (m[list] || []).filter(x => { const mk = monthOfDate(x.date); return mk && mk !== monthKey; });
 }
-
-// Egy tétel áthelyezése a dátuma szerinti hónapba. Visszaadja az új hónapot, vagy null-t, ha marad.
-export function relocateItem(db, monthKey, itemId) {
+// Egy bejegyzés áthelyezése a dátuma szerinti hónapba. Visszaadja az új hónapot, vagy null-t, ha marad.
+function relocateIn(db, monthKey, list, id) {
   const m = db.months[monthKey];
-  const it = m && m.items.find(x => x.id === itemId);
-  const target = it && monthOfDate(it.date);
+  const x = m && (m[list] || []).find(e => e.id === id);
+  const target = x && monthOfDate(x.date);
   if (!target || target === monthKey) return null;
-  m.items = m.items.filter(x => x.id !== itemId);
+  m[list] = m[list].filter(e => e.id !== id);
   ensureMonth(db, target);
-  db.months[target].items.push(it);
+  db.months[target][list].push(x);
   return target;
 }
+// Az összes rossz hónapban lévő bejegyzés áthelyezése. { count, months: [célhónapok] }
+function relocateAllIn(db, monthKey, list) {
+  const moved = misplacedIn(db, monthKey, list);
+  const months = new Set(moved.map(x => relocateIn(db, monthKey, list, x.id)));
+  return { count: moved.length, months: [...months].sort() };
+}
 
-// Az összes rossz hónapban lévő tétel áthelyezése. { count, months: [célhónapok] }
-export function relocateMisplacedItems(db, monthKey) {
-  const list = misplacedItems(db, monthKey);
-  const months = new Set(list.map(it => relocateItem(db, monthKey, it.id)));
-  return { count: list.length, months: [...months].sort() };
+export const misplacedItems = (db, monthKey) => misplacedIn(db, monthKey, "items");
+export const relocateItem = (db, monthKey, id) => relocateIn(db, monthKey, "items", id);
+export const relocateMisplacedItems = (db, monthKey) => relocateAllIn(db, monthKey, "items");
+export const misplacedTransfers = (db, monthKey) => misplacedIn(db, monthKey, "transfers");
+export const relocateTransfer = (db, monthKey, id) => relocateIn(db, monthKey, "transfers", id);
+export const relocateMisplacedTransfers = (db, monthKey) => relocateAllIn(db, monthKey, "transfers");
+
+// --- Duplikátum-figyelés (blokk bevitel, kézi felvitel) ---
+
+function normName(s) { return String(s || "").trim().toLowerCase().replace(/\s+/g, " "); }
+function itemsOnDate(db, date) {
+  const mk = monthOfDate(date);
+  return mk ? ((db.months[mk] && db.months[mk].items) || []).filter(i => i.date === date) : [];
+}
+
+// Ugyanaz a tétel (név — kis/nagybetű és szóköz nélkül —, ár, dátum) már szerepel?
+export function findDuplicateItem(db, { name, price, date }) {
+  return itemsOnDate(db, date).find(i => normName(i.name) === normName(name) && Math.round(i.price) === Math.round(price)) || null;
+}
+
+// Egy összeg (pl. Walletből a végösszeg) egyezik-e egy aznapi, már felvett blokk
+// (azonos üzlet, legalább 2 tétel) tételeinek összegével? { store, count } vagy null.
+export function findReceiptSumMatch(db, date, amount) {
+  const groups = new Map();
+  for (const i of itemsOnDate(db, date)) {
+    const k = normName(i.store);
+    if (!groups.has(k)) groups.set(k, { store: i.store || "", count: 0, sum: 0 });
+    const g = groups.get(k); g.count++; g.sum += i.price;
+  }
+  for (const g of groups.values()) {
+    if (g.count >= 2 && Math.round(g.sum) === Math.round(amount)) return { store: g.store, count: g.count };
+  }
+  return null;
+}
+
+// Blokk-előnézet elemzése:
+//  dup[i]       — a sor már szerepel (a meglévő tétel), vagy null
+//  totalMatches — egy beolvasott blokk (azonos nap+üzlet, ≥2 sor) összege egyezik egy már felvett
+//                 egyetlen tétel árával (pl. korábban csak a végösszeget vitted fel)
+//  sumMatch     — egysoros importnál: az összeg egyezik egy már felvett blokk tételeinek összegével
+export function analyzeImport(db, rows) {
+  const dup = rows.map(r => findDuplicateItem(db, r));
+  const groups = new Map();
+  rows.forEach((r, i) => {
+    if (!monthOfDate(r.date)) return;
+    const k = r.date + "|" + normName(r.store);
+    if (!groups.has(k)) groups.set(k, { date: r.date, store: r.store || "", idx: [] });
+    groups.get(k).idx.push(i);
+  });
+  const totalMatches = [];
+  for (const g of groups.values()) {
+    if (g.idx.length < 2) continue;
+    const sum = Math.round(g.idx.reduce((s, i) => s + (Number(rows[i].price) || 0), 0));
+    const item = itemsOnDate(db, g.date).find(i => Math.round(i.price) === sum);
+    if (item) totalMatches.push({ date: g.date, store: g.store, sum, item });
+  }
+  const sumMatch = rows.length === 1 ? findReceiptSumMatch(db, rows[0].date, rows[0].price) : null;
+  return { dup, totalMatches, sumMatch };
 }
 
 // --- Kategória-CRUD ---
@@ -320,9 +379,32 @@ export function deleteReminder(db, id) {
   db.reminders = db.reminders.filter(r => r.id !== id);
   for (const key of Object.keys(db.months)) {
     const m = db.months[key];
-    if (m.paidReminders) m.paidReminders = m.paidReminders.filter(x => x !== id);
+    if (m.paidReminders) m.paidReminders = m.paidReminders.filter(x => x !== id && !x.startsWith(id + "@"));
   }
   return db;
+}
+
+// Heti/napi kötelező kiadás havonta több alkalommal esedékes — ezek alkalmanként pipálhatók
+// ("id@YYYY-MM-DD" kulcs). Havi/egyszeri: a kulcs az id (a régi adat is így tárolja).
+export function isPerOccurrence(rem) { return rem.freq === "weekly" || rem.freq === "daily"; }
+export function paidKey(rem, date) { return isPerOccurrence(rem) ? `${rem.id}@${date}` : rem.id; }
+export function isOccurrencePaid(db, monthKey, rem, date) {
+  const p = (db.months[monthKey] && db.months[monthKey].paidReminders) || [];
+  return p.includes(paidKey(rem, date)) || p.includes(rem.id);   // régi: egész hónap kifizetve
+}
+// Egy alkalom kifizetettségének átbillentése; visszaadja az új állapotot.
+export function toggleOccurrencePaid(db, monthKey, rem, date) {
+  ensureMonth(db, monthKey);
+  const m = db.months[monthKey];
+  if (isPerOccurrence(rem) && m.paidReminders.includes(rem.id)) {
+    // Régi „egész hónap kifizetve” jelölés felbontása alkalmakra, hogy egyet le lehessen venni.
+    m.paidReminders = m.paidReminders.filter(x => x !== rem.id);
+    for (const d of occurrencesInMonth(rem, monthKey)) m.paidReminders.push(paidKey(rem, d));
+  }
+  const k = paidKey(rem, date);
+  if (m.paidReminders.includes(k)) m.paidReminders = m.paidReminders.filter(x => x !== k);
+  else m.paidReminders.push(k);
+  return isOccurrencePaid(db, monthKey, rem, date);
 }
 export function isReminderPaid(db, monthKey, reminderId) {
   const m = db.months[monthKey];
@@ -338,12 +420,15 @@ export function toggleReminderPaid(db, monthKey, reminderId) {
 export function remindersDueInMonth(db, monthKey) {
   return db.reminders
     .filter(r => r.active)
-    .map(r => ({ reminder: r, dates: occurrencesInMonth(r, monthKey), paid: isReminderPaid(db, monthKey, r.id) }))
+    .map(r => {
+      const dates = occurrencesInMonth(r, monthKey);
+      return { reminder: r, dates, paid: dates.length > 0 && dates.every(d => isOccurrencePaid(db, monthKey, r, d)) };
+    })
     .filter(x => x.dates.length > 0);
 }
 export function remindersDueOn(db, dateKey) {
   const monthKey = dateKey.slice(0, 7);
-  return db.reminders.filter(r => r.active && !isReminderPaid(db, monthKey, r.id) && occurrencesInMonth(r, monthKey).includes(dateKey));
+  return db.reminders.filter(r => r.active && occurrencesInMonth(r, monthKey).includes(dateKey) && !isOccurrencePaid(db, monthKey, r, dateKey));
 }
 
 export function daysBetween(fromKey, toKey) {
@@ -367,27 +452,48 @@ export function monthComparison(db, monthKey, todayK) {
   const delta = cur - prev;
   const deltaPct = prev > 0 ? Math.round((delta / prev) * 100) : null;
   // projItems: csak a napi (változó) bolti kiadás előrevetítve.
-  // projTotal: ehhez egyszer hozzáadva a fix/kötelező (kimenő utalás) kiadás — nem felszorozva.
-  let projItems = null, projTotal = null;
+  // projTotal: ehhez egyszer hozzáadva a fix/kötelező (kimenő utalás) kiadás — nem felszorozva —,
+  // plusz a még ki nem fizetett, összeggel megadott kötelező kiadások (mandatoryLeft).
+  let projItems = null, projTotal = null, mandatoryLeft = null;
   if (todayK && todayK.slice(0, 7) === monthKey) {
     const day = Number(todayK.slice(8, 10));
     const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
     if (day > 0) {
       projItems = Math.round(ov.expenseItems * (daysInMonth / day));
-      projTotal = projItems + ov.expenseOut;
+      mandatoryLeft = unpaidMandatoryAmount(db, monthKey, todayK);
+      projTotal = projItems + ov.expenseOut + mandatoryLeft;
     }
   }
-  return { current: cur, prev, delta, deltaPct, projItems, projTotal };
+  return { current: cur, prev, delta, deltaPct, projItems, projTotal, mandatoryLeft };
 }
 
-// Az adott hónap esedékes kötelező kiadásai, kijelzéshez: a ma-hoz legközelebbi
-// (lehetőleg soron következő) dátum, a kifizetettség és a sürgősség (<=3 nap, ha nincs fizetve).
+// Az adott hónap esedékes kötelező kiadásai, kijelzéshez. Havi/egyszeri: egy sor (a ma-hoz
+// legközelebbi, lehetőleg soron következő dátummal); heti/napi: alkalmanként egy-egy sor.
+// Sürgős: ki nem fizetett és legfeljebb 3 nap van hátra (vagy már lejárt).
 export function dueSummaryForMonth(db, monthKey, todayKey) {
-  return remindersDueInMonth(db, monthKey).map(({ reminder, dates, paid }) => {
-    const date = dates.find(d => d >= todayKey) || dates[dates.length - 1];
+  const row = (reminder, date) => {
+    const paid = isOccurrencePaid(db, monthKey, reminder, date);
     const daysUntil = daysBetween(todayKey, date);
     return { reminder, date, paid, daysUntil, urgent: !paid && daysUntil <= 3 };
-  });
+  };
+  const rows = [];
+  for (const { reminder, dates } of remindersDueInMonth(db, monthKey)) {
+    if (isPerOccurrence(reminder)) for (const d of dates) rows.push(row(reminder, d));
+    else rows.push(row(reminder, dates.find(d => d >= todayKey) || dates[dates.length - 1]));
+  }
+  return rows;
+}
+
+// A hónap még ki nem fizetett, összeggel megadott kötelező kiadásai (alkalmanként összeadva).
+// Ami már pénzmozgásként rögzítve van ebben a hónapban (pipához kötve, vagy azonos nevű kötelező
+// kimenő), azt nem számoljuk még egyszer — az már benne van a kimenőkben.
+export function unpaidMandatoryAmount(db, monthKey, todayKey) {
+  const trs = (db.months[monthKey] && db.months[monthKey].transfers) || [];
+  const recorded = d => trs.some(t => t.dir === "out" && (t.reminderKey === paidKey(d.reminder, d.date)
+    || (!t.reminderKey && !isPerOccurrence(d.reminder) && t.mandatory && t.name === d.reminder.name)));
+  return Math.round(dueSummaryForMonth(db, monthKey, todayKey)
+    .filter(d => !d.paid && d.reminder.amount != null && d.reminder.amount !== "" && !recorded(d))
+    .reduce((s, d) => s + Number(d.reminder.amount), 0));
 }
 
 // --- Kiadás-szűrő (tiszta logika) ---
