@@ -359,12 +359,14 @@ function renderMonthTotal(state, h, filtered) {
 }
 
 // Tételek rendezése egy kategórián belül. "manual" = ahogy felvitte (eredeti sorrend).
-const ITEM_SORTS = [["manual", "Ahogy felvittem"], ["price", "Ár szerint (nagy → kicsi)"], ["name", "Név szerint (A → Z)"], ["date", "Dátum szerint (új → régi)"]];
+const ITEM_SORTS = [["manual", "Ahogy felvittem"], ["price", "Ár szerint csökkenő (nagy → kicsi)"], ["price-asc", "Ár szerint növekvő (kicsi → nagy)"], ["name", "Név szerint (A → Z)"], ["date", "Dátum szerint csökkenő (új → régi)"], ["date-asc", "Dátum szerint növekvő (régi → új)"]];
 function sortItemsBy(items, mode) {
   const arr = items.slice();
   if (mode === "price") arr.sort((a, b) => b.price - a.price);
+  else if (mode === "price-asc") arr.sort((a, b) => a.price - b.price);
   else if (mode === "name") arr.sort((a, b) => a.name.localeCompare(b.name, "hu"));
   else if (mode === "date") arr.sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+  else if (mode === "date-asc") arr.sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")));
   return arr;   // "manual": marad az eredeti sorrend
 }
 

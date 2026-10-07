@@ -1,6 +1,11 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.46", date: "2026-10-07", notes: [
+      "Kiadások rendezése: ár és dátum szerint is választható csökkenő és növekvő sorrend.",
+    ],
+  },
+  {
     v: "2.45", date: "2026-10-07", notes: [
       "Blokk bevitel: a tétel javításakor (hosszan nyomva a nevet) a dátum is látszik és átírható; a sorokban is kiírja a napot. Ha másik hónapra írod át, a tétel abba a hónapba kerül.",
     ],
