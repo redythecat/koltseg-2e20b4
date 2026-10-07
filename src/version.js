@@ -1,6 +1,11 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.44", date: "2026-10-07", notes: [
+      "Kiadások: a tételek rendezhetők kategóriánként — „Rendezés” választó a havi összeg alatt (ár, név, dátum, vagy ahogy felvitted). A választást megjegyzi.",
+    ],
+  },
+  {
     v: "2.43", date: "2026-10-07", notes: [
       "Blokk bevitel: a beolvasott tételek már az előnézetben törölhetők — koppints a sor végén lévő kuka ikonra.",
     ],

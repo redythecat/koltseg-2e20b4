@@ -299,6 +299,7 @@ const handlers = {
     render();
   },
   onSetCatChart: (mode) => { state.db.settings.catChartMode = mode; commit(); },
+  onSetItemSort: (mode) => { state.db.settings.itemSort = mode; commit(); },
   onSetAutoBackupDays: (days) => { state.db.settings.autoBackupDays = Number(days); commit(); },
   onOpenReminders: () => { state.view = "reminders"; render(); },
   onAddReminder: () => { state.editing = { type: "reminder", id: null }; render(); },

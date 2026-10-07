@@ -358,6 +358,16 @@ function renderMonthTotal(state, h, filtered) {
   return box;
 }
 
+// Tételek rendezése egy kategórián belül. "manual" = ahogy felvitte (eredeti sorrend).
+const ITEM_SORTS = [["manual", "Ahogy felvittem"], ["price", "Ár szerint (nagy → kicsi)"], ["name", "Név szerint (A → Z)"], ["date", "Dátum szerint (új → régi)"]];
+function sortItemsBy(items, mode) {
+  const arr = items.slice();
+  if (mode === "price") arr.sort((a, b) => b.price - a.price);
+  else if (mode === "name") arr.sort((a, b) => a.name.localeCompare(b.name, "hu"));
+  else if (mode === "date") arr.sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+  return arr;   // "manual": marad az eredeti sorrend
+}
+
 export function renderMonthView(state, h) {
   const { db, month } = state;
   const wrap = el("div");
@@ -392,9 +402,15 @@ export function renderMonthView(state, h) {
       el("strong", {}, "Még nincs tétel ebben a hónapban"),
       el("div", { class: "muted" }, "Vedd fel az elsőt az „Új tétel” gombbal, vagy olvass be egy blokkot: Beállítások → Blokk bevitel.")));
   }
+  const sortMode = state.db.settings.itemSort || "manual";
+  if (shown.length > 0) {
+    const sel = el("select", { "aria-label": "Tételek rendezése", onchange: e => h.onSetItemSort && h.onSetItemSort(e.target.value) },
+      ...ITEM_SORTS.map(([v, l]) => el("option", { value: v, ...(sortMode === v ? { selected: "" } : {}) }, l)));
+    wrap.append(el("div", { class: "sort-row" }, el("span", { class: "muted" }, "Rendezés"), sel));
+  }
   let shownAny = false;
   for (const c of db.categories.slice().sort((a, b) => a.order - b.order)) {
-    const items = shown.filter(i => i.categoryId === c.id);
+    const items = sortItemsBy(shown.filter(i => i.categoryId === c.id), sortMode);
     if (filtering && !items.length) continue;
     shownAny = true;
     const key = "cat:" + c.id;
