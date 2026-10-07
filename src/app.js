@@ -362,6 +362,13 @@ const handlers = {
     const choice = await choiceModal("Válassz kategóriát", cats);
     if (choice) { r.categoryId = choice; render(); }
   },
+  onDeleteImportRow: (i) => {
+    const p = state.importPreview;
+    if (!p || !p.rows[i]) return;
+    p.rows.splice(i, 1);
+    if (!p.rows.length) { state.importPreview = null; toast("Minden tétel törölve az előnézetből."); }
+    render();
+  },
   onOpenImport: (code) => { state.view = "import"; state.importCode = code || ""; state.importPreview = null; render(); },
   onOpenImportView: () => handlers.onOpenImport(""),
   onCopyImportPrompt: async () => {
@@ -510,7 +517,7 @@ function render() {
       onBack: () => { state.view = "settings"; render(); },
     }));
   } else if (state.view === "import") {
-    root.append(renderImportView(state, { initialCode: state.importCode, onDecode: decodeToPreview, onConfirm: confirmImport, onCopyPrompt: handlers.onCopyImportPrompt, onEditRow: handlers.onEditImportRow, onPickCat: handlers.onPickImportCat, onBack: () => { state.view = "settings"; render(); } }));
+    root.append(renderImportView(state, { initialCode: state.importCode, onDecode: decodeToPreview, onConfirm: confirmImport, onCopyPrompt: handlers.onCopyImportPrompt, onEditRow: handlers.onEditImportRow, onPickCat: handlers.onPickImportCat, onDeleteRow: handlers.onDeleteImportRow, onBack: () => { state.view = "settings"; render(); } }));
   } else if (state.view === "restore") {
     root.append(renderRestoreView(state, { onRestoreSnapshot: handlers.onRestoreSnapshot, onRestoreFile: handlers.onRestoreFile, onPruneBackups: handlers.onPruneBackups, onBack: handlers.onBackFromRestore }));
   } else if (state.view === "settings") {

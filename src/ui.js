@@ -26,6 +26,8 @@ const CAL_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stro
 
 const FILTER_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>';
 
+const TRASH_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v5M14 11v5"/></svg>';
+
 // Keresősáv: törlő X, mellette vagy naptár-ikon (dátumra szűrés), vagy szűrő-gomb.
 // onInput(érték, { noFocus }) — koppintós művelet után nem kérjük vissza a billentyűzetet.
 function searchRow(id, value, placeholder, onInput, opts = {}) {
@@ -958,7 +960,7 @@ export function renderOverview(state, h) {
 
 // --- Import ---
 
-export function renderImportView(state, { onDecode, onConfirm, onBack, onCopyPrompt, onEditRow, onPickCat, initialCode }) {
+export function renderImportView(state, { onDecode, onConfirm, onBack, onCopyPrompt, onEditRow, onPickCat, onDeleteRow, initialCode }) {
   const { db } = state;
   const wrap = el("div", {});
   wrap.append(el("div", { class: "topbar" }, el("h2", {}, "Blokk bevitel"), el("button", { class: "ghost", onclick: onBack }, "Vissza")));
@@ -989,7 +991,9 @@ export function renderImportView(state, { onDecode, onConfirm, onBack, onCopyPro
       const lbl = el("span", { class: "cat-pick-lbl" }, catNm);
       const pick = el("button", { class: "cat-pick", onclick: () => onPickCat && onPickCat(idx) }, lbl, el("span", { class: "cat-pick-caret" }, "▾"));
       requestAnimationFrame(() => fitLabel(lbl, catNm));
-      box.append(el("div", { class: "item imp-row" }, info, pick));
+      const del = el("button", { class: "imp-del", "aria-label": "Tétel törlése", title: "Tétel törlése", onclick: () => onDeleteRow && onDeleteRow(idx) });
+      del.insertAdjacentHTML("afterbegin", TRASH_SVG);
+      box.append(el("div", { class: "item imp-row" }, info, pick, del));
     });
     const total = p.rows.reduce((s, r) => s + (Number(r.price) || 0), 0);
     box.append(el("div", { class: "cat-head", style: "margin-top:10px;font-weight:800;font-size:1.05rem" }, el("span", {}, "Összesen"), el("span", {}, ft(total))));

@@ -1,6 +1,11 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.43", date: "2026-10-07", notes: [
+      "Blokk bevitel: a beolvasott tételek már az előnézetben törölhetők — koppints a sor végén lévő kuka ikonra.",
+    ],
+  },
+  {
     v: "2.42", date: "2026-08-07", notes: [
       "Javítva: iPhone-on a ChatGPT/Gemini válaszában lévő „okos” (görbe) idézőjelek miatt elszállt a blokk-beolvasás — mostantól ezeket is elfogadja.",
       "A Visszaállítás „Fontos” szövege pontosítva — nem hivatkozik többé ott nem lévő gombra.",
