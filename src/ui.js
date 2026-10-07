@@ -998,11 +998,12 @@ export function renderImportView(state, { onDecode, onConfirm, onBack, onCopyPro
     const dates = [...new Set(p.rows.map(r => r.date).filter(Boolean))];
     const headerLabel = dates.length === 1 ? importDateLabel(dates[0]) : monthLabel(p.month);
     box.append(el("h3", {}, `${p.rows.length} tétel — ${headerLabel}`));
-    box.append(el("p", { class: "muted", style: "margin:0 0 8px" }, "Tipp: tartsd nyomva egy tétel nevét a szerkesztéshez."));
+    box.append(el("p", { class: "muted", style: "margin:0 0 8px" }, "Tipp: tartsd nyomva egy tétel nevét a szerkesztéshez (név, üzlet, darab, ár, dátum)."));
     p.rows.forEach((r, idx) => {
       const nameEl = el("div", { class: "editable-name" }, `${r.name} — ${ft(r.price)}`);
       if (onEditRow) attachLongPress(nameEl, () => onEditRow(idx));
-      const info = el("div", { class: "imp-info" }, nameEl, el("small", {}, `${r.qty} db · ${r.store || "—"} · ${r.payment === "cash" ? "kp" : "kártya"}`));
+      const dateTxt = r.date ? ` · ${r.date.slice(5).replace("-", ".")}.` : "";
+      const info = el("div", { class: "imp-info" }, nameEl, el("small", {}, `${r.qty} db · ${r.store || "—"} · ${r.payment === "cash" ? "kp" : "kártya"}${dateTxt}`));
       const catNm = (db.categories.find(c => c.id === r.categoryId) || {}).name || "—";
       const lbl = el("span", { class: "cat-pick-lbl" }, catNm);
       const pick = el("button", { class: "cat-pick", onclick: () => onPickCat && onPickCat(idx) }, lbl, el("span", { class: "cat-pick-caret" }, "▾"));

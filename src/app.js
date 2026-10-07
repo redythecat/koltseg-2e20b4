@@ -207,7 +207,8 @@ function decodeToPreview(code) {
 function confirmImport() {
   const { month, rows } = state.importPreview;
   addSnapshot(state.db, "blokk-bevitel előtt");   // telefonon tárolt, visszaállítható állapot
-  for (const r of rows) addItem(state.db, month, { name: r.name, qty: r.qty, price: r.price, store: r.store, date: r.date, payment: r.payment, categoryId: r.categoryId });
+  // A tétel a saját dátuma szerinti hónapba kerül (ha a dátumot átírták másik hónapra).
+  for (const r of rows) addItem(state.db, /^\d{4}-\d{2}-\d{2}$/.test(r.date || "") ? r.date.slice(0, 7) : month, { name: r.name, qty: r.qty, price: r.price, store: r.store, date: r.date, payment: r.payment, categoryId: r.categoryId });
   state.importPreview = null; state.view = "month"; state.month = month; commit();
   if (IS_IOS) {
     // iPhone-on a megosztó-lap csak kérdés után ugorhat fel.
@@ -345,9 +346,11 @@ const handlers = {
       { key: "store", label: "Üzlet", value: r.store || "" },
       { key: "qty", label: "Darab", value: r.qty ?? 1, type: "number", min: 1 },
       { key: "price", label: "Ár — a sor teljes összege (Ft)", value: r.price, type: "number", min: 0 },
+      { key: "date", label: "Dátum", value: r.date || "", type: "date" },
     ]);
     if (res) {
       if (res.name.trim()) r.name = res.name.trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(res.date)) r.date = res.date;
       r.store = res.store.trim();
       const qty = Math.round(Number(res.qty));
       if (qty >= 1) r.qty = qty;
