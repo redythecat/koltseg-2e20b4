@@ -1,6 +1,13 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.48", date: "2026-10-07", notes: [
+      "Ha egy hónapban más hónapra dátumozott tételek vannak (pl. több blokk egyben beolvasva), a Kiadások tetején figyelmeztetés jelenik meg, egy „Áthelyezés” gombbal. Előtte mentés készül.",
+      "Tétel felvételekor és szerkesztésekor a tétel a dátuma szerinti hónapba kerül (ha más hónapra írod át a dátumot, oda költözik).",
+      "Új tételnél, ha egy korábbi hónapot nézel, a dátum alapból annak a hónapnak az 1-je.",
+    ],
+  },
+  {
     v: "2.47", date: "2026-10-07", notes: [
       "Rendezés: rövidebb feliratok (pl. „Ár szerint növekvő”).",
     ],

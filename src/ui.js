@@ -1,5 +1,5 @@
 import { monthOverview, categoryTotal, remindersDueInMonth, occurrencesInMonth, dueSummaryForMonth, todayKey, monthComparison, monthStats, yearTotals, yearStats,
-  filterRange, dateBounds, hasActiveFilters, isCrossMonth, collectItems } from "./model.js";
+  filterRange, dateBounds, hasActiveFilters, isCrossMonth, collectItems, misplacedItems, monthOfDate } from "./model.js";
 import { ACCENTS } from "./theme.js";
 import { toast } from "./dialog.js";
 import { APP_VERSION, APP_DATE } from "./version.js";
@@ -378,6 +378,16 @@ export function renderMonthView(state, h) {
 
   const pinned = renderRemindersPinned(state, h); if (pinned) wrap.append(pinned);
 
+  // Más hónapra dátumozott tételek ebben a hónapban (pl. több blokk egyben beolvasva).
+  const misplaced = misplacedItems(db, month);
+  if (misplaced.length) {
+    const targets = [...new Set(misplaced.map(it => monthOfDate(it.date)))].sort().map(monthLabel).join(", ");
+    wrap.append(el("div", { class: "warn-card" },
+      el("span", { class: "warn-title" }, `${misplaced.length} tétel dátuma másik hónapra esik`),
+      el("p", {}, `Ezek a tételek ebben a hónapban vannak, de a dátumuk szerint ide tartoznak: ${targets}.`),
+      el("button", { class: "primary", style: "width:100%;margin-top:10px", onclick: () => h.onRelocateMisplaced(misplaced.length) }, "Áthelyezés a dátum szerinti hónapba")));
+  }
+
   const q = (state.search || "").trim().toLowerCase();
   const { maxPrice } = filterRange(db);
   const filtering = !!q || hasActiveFilters(state.filters, maxPrice);
@@ -485,7 +495,11 @@ function quickListBox(entries) {
 
 export function renderItemForm(state, { item, onSave, onDelete, onCancel }) {
   const { db } = state;
-  const v = item || { name: "", qty: 1, price: "", store: "", date: todayKey(), payment: "card", categoryId: db.categories[0]?.id };
+  // Új tételnél a dátum: ma, ha a mostani hónapot nézed; különben a nézett hónap 1-je
+  // (a tétel a dátuma szerinti hónapba kerül, így nem ugrik át a mai hónapba).
+  const today = todayKey();
+  const defDate = today.slice(0, 7) === state.month ? today : state.month + "-01";
+  const v = item || { name: "", qty: 1, price: "", store: "", date: defDate, payment: "card", categoryId: db.categories[0]?.id };
   const f = { ...v };
   const wrap = el("div", { class: "card" });
   wrap.append(el("h2", {}, item ? "Tétel szerkesztése" : "Új tétel"));

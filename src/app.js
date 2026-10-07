@@ -1,7 +1,7 @@
 import { load, save, downloadBackup, readBackupFile, maybeAutoBackup, listBackups, shareOrDownloadBackup, addSnapshot, pruneOldBackups } from "./storage.js";
 import { applyTheme, watchSystemTheme, applyAccent, applyFontScale } from "./theme.js";
 import {
-  addItem, updateItem, moveItem, deleteItem,
+  addItem, updateItem, moveItem, deleteItem, monthOfDate, relocateItem, relocateMisplacedItems,
   addCategory, renameCategory, deleteCategory,
   addTransfer, updateTransfer, deleteTransfer,
   addReminder, updateReminder, deleteReminder, toggleReminderPaid, remindersDueOn, daysBetween,
@@ -15,7 +15,7 @@ import { toast, confirmModal, choiceModal, changelogModal, helpModal, formModal,
 import { CHANGELOG, APP_VERSION } from "./version.js";
 import {
   el, shiftMonth, findCategoryIdByName,
-  renderMonthView, renderItemForm, renderCategoryManager,
+  renderMonthView, renderItemForm, renderCategoryManager, monthLabel,
   renderTransfersView, renderTransferForm, renderOverview,
   renderImportView, renderRemindersView, renderReminderForm, renderSettings, renderRestoreView,
   renderTemplatesManager, renderTemplateForm, renderTransferTemplateForm, renderFilterPanel,
@@ -89,12 +89,18 @@ function downloadText(name, text, type = "text/plain;charset=utf-8") {
 function saveItem(f) {
   const price = Math.round(f.price); // egész forint
   const cur = state.editing.id;
-  if (cur == null) addItem(state.db, state.month, { ...f, price });
-  else {
+  // A tétel a dátuma szerinti hónapba kerül (más hónapra írt dátumnál oda költözik).
+  let target = null;
+  if (cur == null) {
+    target = monthOfDate(f.date);
+    addItem(state.db, target || state.month, { ...f, price });
+  } else {
     updateItem(state.db, state.month, cur, { name: f.name, qty: f.qty, price, store: f.store, date: f.date, payment: f.payment });
     moveItem(state.db, state.month, cur, f.categoryId);
+    target = relocateItem(state.db, state.month, cur);
   }
   state.editing = null; commit();
+  if (target && target !== state.month) toast(`A tétel a dátuma szerint ide került: ${monthLabel(target)}.`);
 }
 async function removeItem(id) {
   if (!(await confirmModal("Biztosan törlöd ezt a tételt?", { okText: "Törlés", cancelText: "Mégse", danger: true }))) return;
@@ -208,7 +214,7 @@ function confirmImport() {
   const { month, rows } = state.importPreview;
   addSnapshot(state.db, "blokk-bevitel előtt");   // telefonon tárolt, visszaállítható állapot
   // A tétel a saját dátuma szerinti hónapba kerül (ha a dátumot átírták másik hónapra).
-  for (const r of rows) addItem(state.db, /^\d{4}-\d{2}-\d{2}$/.test(r.date || "") ? r.date.slice(0, 7) : month, { name: r.name, qty: r.qty, price: r.price, store: r.store, date: r.date, payment: r.payment, categoryId: r.categoryId });
+  for (const r of rows) addItem(state.db, monthOfDate(r.date) || month, { name: r.name, qty: r.qty, price: r.price, store: r.store, date: r.date, payment: r.payment, categoryId: r.categoryId });
   state.importPreview = null; state.view = "month"; state.month = month; commit();
   if (IS_IOS) {
     // iPhone-on a megosztó-lap csak kérdés után ugorhat fel.
@@ -301,6 +307,14 @@ const handlers = {
   },
   onSetCatChart: (mode) => { state.db.settings.catChartMode = mode; commit(); },
   onSetItemSort: (mode) => { state.db.settings.itemSort = mode; commit(); },
+  onRelocateMisplaced: async (n) => {
+    const yes = await confirmModal(`Áthelyezzem a(z) ${n} tételt a dátumuk szerinti hónapba? Előtte mentés készül, ami a Visszaállításnál elérhető.`, { okText: "Áthelyezés", cancelText: "Mégse" });
+    if (!yes) return;
+    addSnapshot(state.db, "áthelyezés előtt");
+    const res = relocateMisplacedItems(state.db, state.month);
+    commit();
+    toast(`${res.count} tétel áthelyezve ide: ${res.months.map(monthLabel).join(", ")}.`);
+  },
   onSetAutoBackupDays: (days) => { state.db.settings.autoBackupDays = Number(days); commit(); },
   onOpenReminders: () => { state.view = "reminders"; render(); },
   onAddReminder: () => { state.editing = { type: "reminder", id: null }; render(); },

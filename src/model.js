@@ -80,6 +80,37 @@ export function deleteItem(db, monthKey, itemId) {
   return db;
 }
 
+// A tétel dátumából a hónap ("YYYY-MM"), csak teljes "YYYY-MM-DD" dátumnál; egyébként null.
+export function monthOfDate(date) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(date || "") ? date.slice(0, 7) : null;
+}
+
+// A hónap azon tételei, amelyek dátuma MÁSIK hónapra esik (pl. több blokk egyben beolvasva).
+export function misplacedItems(db, monthKey) {
+  const m = db.months[monthKey];
+  if (!m) return [];
+  return m.items.filter(it => { const mk = monthOfDate(it.date); return mk && mk !== monthKey; });
+}
+
+// Egy tétel áthelyezése a dátuma szerinti hónapba. Visszaadja az új hónapot, vagy null-t, ha marad.
+export function relocateItem(db, monthKey, itemId) {
+  const m = db.months[monthKey];
+  const it = m && m.items.find(x => x.id === itemId);
+  const target = it && monthOfDate(it.date);
+  if (!target || target === monthKey) return null;
+  m.items = m.items.filter(x => x.id !== itemId);
+  ensureMonth(db, target);
+  db.months[target].items.push(it);
+  return target;
+}
+
+// Az összes rossz hónapban lévő tétel áthelyezése. { count, months: [célhónapok] }
+export function relocateMisplacedItems(db, monthKey) {
+  const list = misplacedItems(db, monthKey);
+  const months = new Set(list.map(it => relocateItem(db, monthKey, it.id)));
+  return { count: list.length, months: [...months].sort() };
+}
+
 // --- Kategória-CRUD ---
 
 export function addCategory(db, name) {
