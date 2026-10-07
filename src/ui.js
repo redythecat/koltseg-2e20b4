@@ -359,7 +359,7 @@ function renderMonthTotal(state, h, filtered) {
 }
 
 // Tételek rendezése egy kategórián belül. "manual" = ahogy felvitte (eredeti sorrend).
-const ITEM_SORTS = [["manual", "Ahogy felvittem"], ["price", "Ár szerint csökkenő (nagy → kicsi)"], ["price-asc", "Ár szerint növekvő (kicsi → nagy)"], ["name", "Név szerint (A → Z)"], ["date", "Dátum szerint csökkenő (új → régi)"], ["date-asc", "Dátum szerint növekvő (régi → új)"]];
+const ITEM_SORTS = [["manual", "Ahogy felvittem"], ["price", "Ár szerint csökkenő"], ["price-asc", "Ár szerint növekvő"], ["name", "Név szerint"], ["date", "Dátum szerint csökkenő"], ["date-asc", "Dátum szerint növekvő"]];
 function sortItemsBy(items, mode) {
   const arr = items.slice();
   if (mode === "price") arr.sort((a, b) => b.price - a.price);

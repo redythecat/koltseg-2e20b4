@@ -1,6 +1,11 @@
 // Verzió-napló — legfrissebb legfelül. Emberi nyelven, röviden.
 export const CHANGELOG = [
   {
+    v: "2.47", date: "2026-10-07", notes: [
+      "Rendezés: rövidebb feliratok (pl. „Ár szerint növekvő”).",
+    ],
+  },
+  {
     v: "2.46", date: "2026-10-07", notes: [
       "Kiadások rendezése: ár és dátum szerint is választható csökkenő és növekvő sorrend.",
     ],
